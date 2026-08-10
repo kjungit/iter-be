@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: iter
+  config:
+    import: optional:file:./application-secret.yml
+  jpa:
+    hibernate:
+      ddl-auto: update   # 팀 컨벤션 확정 전 임시값. 운영/공유 DB에서는 validate 또는 none 권장
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.iter: debug
