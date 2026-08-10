@@ -5,6 +5,9 @@ public enum AdminActionType {
     SUSPEND_USER,       // 회원 이용 정지
     RESTORE_USER,       // 회원 이용 정지 해제
     SUSPEND_EQUIPMENT,  // 장비 차단
-    RESTORE_EQUIPMENT   // 장비 차단 해제
-    // TODO: 분쟁 관리 담당자가 DISPUTE_RESOLVE, DISPUTE_REJECT 등 추가
+    RESTORE_EQUIPMENT,   // 장비 차단 해제
+
+    RESOLVE_REPORT,     // 일반 신고 처리 완료
+    REJECT_REPORT,      // 일반 신고 기각
+    RESOLVE_DISPUTE     // 분쟁 처리 완료
 }

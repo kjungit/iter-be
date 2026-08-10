@@ -2,7 +2,7 @@ package com.example.iter.common.config;
 
 import com.example.iter.common.response.ApiResponse;
 import com.example.iter.common.security.JwtAuthenticationFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -34,7 +34,7 @@ import java.io.IOException;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     // 인증 없이 접근 가능한 경로.
     // TODO: 장비 목록/상세 조회(GET /api/v1/devices/**)를 비로그인 사용자에게도 공개할지는 팀 확정 필요
@@ -107,6 +107,6 @@ public class SecurityConfig {
     private void writeErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.fail(message)));
+        response.getWriter().write(jsonMapper.writeValueAsString(ApiResponse.fail(message)));
     }
 }

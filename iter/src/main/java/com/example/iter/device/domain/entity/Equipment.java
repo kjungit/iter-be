@@ -45,7 +45,7 @@ public class Equipment extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
-    private EquipmentStatus status = EquipmentStatus.AVAILABLE;
+    private EquipmentStatus status = EquipmentStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

@@ -44,7 +44,7 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public boolean isAccountNonLocked() {
         // 정지(SUSPENDED)된 계정은 잠금 처리로 간주 -> 로그인 자체를 막는다.
-        return user.getStatus() != com.iter.auth.domain.entity.UserStatus.SUSPENDED;
+        return user.getStatus() != com.example.iter.auth.domain.entity.UserStatus.SUSPENDED;
     }
 
     @Override
@@ -55,6 +55,6 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         // 탈퇴(DELETED)한 계정은 비활성 처리
-        return user.getStatus() != com.iter.auth.domain.entity.UserStatus.DELETED;
+        return user.getStatus() != com.example.iter.auth.domain.entity.UserStatus.DELETED;
     }
 }
