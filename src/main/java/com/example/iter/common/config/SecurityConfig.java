@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/api/v1/devices/*/availability",
                                 "/api/v1/devices/*/estimate"
                         ).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
