@@ -15,6 +15,7 @@ import java.time.Duration;
 public class JwtProperties {
 
     private String issuer;
+    private String audience;
     private String secretKey;
     private Duration accessTokenValidity;
     private Duration refreshTokenValidity;

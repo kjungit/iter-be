@@ -5,7 +5,6 @@ import com.example.iter.auth.dto.request.SignUpRequest;
 import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
 import com.example.iter.auth.service.AuthService;
-import com.example.iter.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// MVP 기능 #1 회원가입/로그인(JWT) — 기획서 4-1 참고
+// MVP 기능 #1 회원가입/로그인(JWT)
 @Tag(name = "Auth", description = "회원가입/로그인 API")
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -28,18 +27,18 @@ public class AuthApiController {
 
     @Operation(summary = "회원가입")
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<UserResponse>> signUp(@Valid @RequestBody SignUpRequest request) {
+    public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request) {
         UserResponse response = authService.signUp(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response));
+                .body(response);
     }
 
     @Operation(summary = "로그인", description = "성공 시 access token / refresh token을 발급합니다.")
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         TokenResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(response);
     }
 
     // TODO: POST /refresh (refresh token으로 access token 재발급), POST /logout

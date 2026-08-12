@@ -41,12 +41,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long userId = jwtTokenProvider.getUserId(token);
                 User user = customUserDetailsService.loadUserById(userId);
 
-                if (user.isActive()) {
+                if (user.getStatus() != com.example.iter.auth.domain.entity.UserStatus.DELETED) {
                     CustomUserDetails principal = CustomUserDetails.builder().user(user).build();
                     Authentication authentication = jwtTokenProvider.getAuthentication(principal);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
-                    log.warn("비활성 상태({})의 회원이 토큰으로 접근 시도: userId={}", user.getStatus(), userId);
+                    log.warn("탈퇴한 회원이 토큰으로 접근 시도: userId={}", userId);
                 }
             } else if (status == TokenStatus.EXPIRED) {
                 log.debug("만료된 토큰으로 요청: {}", request.getRequestURI());

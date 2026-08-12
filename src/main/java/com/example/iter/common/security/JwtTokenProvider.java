@@ -29,8 +29,10 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    private static final String CLAIM_ID = "id";
     private static final String CLAIM_ROLE = "role";
+    private static final String CLAIM_TOKEN_TYPE = "tokenType";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
 
     private final JwtProperties jwtProperties;
 
@@ -40,36 +42,52 @@ public class JwtTokenProvider {
     @PostConstruct
     private void init() {
         this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtProperties.getSecretKey()));
-        this.jwtParser = Jwts.parser().verifyWith(secretKey).build();
+        this.jwtParser = Jwts.parser()
+                .verifyWith(secretKey)
+                .requireIssuer(jwtProperties.getIssuer())
+                .requireAudience(jwtProperties.getAudience())
+                .build();
     }
 
     public String generateAccessToken(User user) {
-        return generateToken(user, jwtProperties.getAccessTokenValidity());
+        return generateToken(user, jwtProperties.getAccessTokenValidity(), ACCESS_TOKEN_TYPE);
     }
 
     public String generateRefreshToken(User user) {
-        return generateToken(user, jwtProperties.getRefreshTokenValidity());
+        return generateToken(user, jwtProperties.getRefreshTokenValidity(), REFRESH_TOKEN_TYPE);
     }
 
-    private String generateToken(User user, Duration validity) {
+    private String generateToken(User user, Duration validity, String tokenType) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validity.toMillis());
 
         return Jwts.builder()
                 .header().type("JWT").and()
                 .issuer(jwtProperties.getIssuer())
+                .audience().add(jwtProperties.getAudience()).and()
                 .issuedAt(now)
                 .expiration(expiry)
-                .subject(user.getEmail())
-                .claim(CLAIM_ID, user.getId())
+                .subject(String.valueOf(user.getId()))
                 .claim(CLAIM_ROLE, user.getRole())
+                .claim(CLAIM_TOKEN_TYPE, tokenType)
                 .signWith(secretKey, Jwts.SIG.HS512)
                 .compact();
     }
 
     public TokenStatus validateToken(String token) {
+        return validateToken(token, ACCESS_TOKEN_TYPE);
+    }
+
+    public TokenStatus validateRefreshToken(String token) {
+        return validateToken(token, REFRESH_TOKEN_TYPE);
+    }
+
+    private TokenStatus validateToken(String token, String expectedTokenType) {
         try {
-            jwtParser.parseSignedClaims(token);
+            Claims claims = jwtParser.parseSignedClaims(token).getPayload();
+            if (!expectedTokenType.equals(claims.get(CLAIM_TOKEN_TYPE, String.class))) {
+                return TokenStatus.INVALID;
+            }
             return TokenStatus.VALID;
         } catch (ExpiredJwtException e) {
             log.debug("만료된 토큰");
@@ -81,7 +99,7 @@ public class JwtTokenProvider {
     }
 
     public Long getUserId(String token) {
-        return getClaims(token).get(CLAIM_ID, Long.class);
+        return Long.valueOf(getClaims(token).getSubject());
     }
 
     private Claims getClaims(String token) {

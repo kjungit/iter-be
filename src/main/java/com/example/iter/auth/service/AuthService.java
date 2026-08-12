@@ -25,14 +25,14 @@ public class AuthService {
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .name(request.name())
-                .nickName(request.nickName())
+                .nickname(request.nickname())
                 .phone(request.phone())
                 .build();
 
@@ -43,14 +43,17 @@ public class AuthService {
     @Transactional(readOnly = true)
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new CustomException(ErrorCode.INVALID_PASSWORD);
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (!user.isActive()) {
-            throw new CustomException(ErrorCode.SUSPENDED_USER);
+        if (user.getStatus() == com.example.iter.auth.domain.entity.UserStatus.SUSPENDED) {
+            throw new CustomException(ErrorCode.USER_SUSPENDED);
+        }
+        if (user.getStatus() == com.example.iter.auth.domain.entity.UserStatus.DELETED) {
+            throw new CustomException(ErrorCode.USER_DELETED);
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user);

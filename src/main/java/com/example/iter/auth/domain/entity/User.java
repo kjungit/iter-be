@@ -5,9 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 // ERD USER 엔티티
-// id, email(UK), password, name, nickName, phone, role, status, created_at, updated_at
+// id, email(UK), password, name, nickname, phone, role, status, created_at, updated_at
 @Entity
-@Table(name = "users") // "user"는 MySQL 예약어와 충돌 위험이 있어 users로 지정 (필요 시 팀 컨벤션에 맞게 변경)
+@Table(name = "users") // "user"는 MySQL 예약어와 충돌 위험이 있어 users로 지정
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -21,14 +21,14 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 255)
     private String password;
 
     @Column(nullable = false, length = 20)
     private String name;
 
     @Column(name = "nick_name", length = 20)
-    private String nickName;
+    private String nickname;
 
     @Column(length = 20)
     private String phone;
@@ -49,9 +49,9 @@ public class User extends BaseTimeEntity {
         this.password = encodedPassword;
     }
 
-    public void updateProfile(String name, String nickName, String phone) {
+    public void updateProfile(String name, String nickname, String phone) {
         this.name = name;
-        this.nickName = nickName;
+        this.nickname = nickname;
         this.phone = phone;
     }
 
