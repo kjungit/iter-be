@@ -1,6 +1,7 @@
 package com.example.iter.auth.service;
 
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -11,7 +12,7 @@ import java.util.Base64;
 public class RefreshTokenHasher {
 
     public String hash(String refreshToken) {
-        if (refreshToken == null || refreshToken.isBlank()) {
+        if (!StringUtils.hasText(refreshToken)) {
             throw new IllegalArgumentException("Refresh Token은 필수입니다.");
         }
 

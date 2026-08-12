@@ -1,6 +1,7 @@
 package com.example.iter.auth.service;
 
 import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
@@ -49,10 +50,10 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (user.getStatus() == com.example.iter.auth.domain.entity.UserStatus.SUSPENDED) {
+        if (user.getStatus() == UserStatus.SUSPENDED) {
             throw new CustomException(ErrorCode.USER_SUSPENDED);
         }
-        if (user.getStatus() == com.example.iter.auth.domain.entity.UserStatus.DELETED) {
+        if (user.getStatus() == UserStatus.DELETED) {
             throw new CustomException(ErrorCode.USER_DELETED);
         }
 
