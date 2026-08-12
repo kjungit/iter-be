@@ -46,5 +46,6 @@ class SecurityFoundationTest {
         assertThat(jwtTokenProvider.validateRefreshToken(refreshToken)).isEqualTo(TokenStatus.VALID);
         assertThat(jwtTokenProvider.validateToken(refreshToken)).isEqualTo(TokenStatus.INVALID);
         assertThat(jwtTokenProvider.getUserId(accessToken)).isEqualTo(1L);
+        assertThat(jwtTokenProvider.getExpiration(refreshToken)).isAfter(jwtTokenProvider.getExpiration(accessToken));
     }
 }

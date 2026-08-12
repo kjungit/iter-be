@@ -22,6 +22,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
@@ -41,7 +42,7 @@ public class AuthService {
         return UserResponse.from(savedUser);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
@@ -58,9 +59,9 @@ public class AuthService {
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+        String refreshToken = refreshTokenService.issueForLogin(user);
         return new TokenResponse(accessToken, refreshToken);
     }
 
-    // TODO: refresh token 재발급 로직 (refresh token 저장소를 어디에 둘지 팀 확정 필요 — Redis / DB 등)
+    // TODO: refresh token 재발급 로직
 }
