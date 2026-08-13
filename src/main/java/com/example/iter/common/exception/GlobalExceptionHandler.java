@@ -1,6 +1,8 @@
 package com.example.iter.common.exception;
 
 import com.example.iter.common.response.ErrorResponse;
+import com.example.iter.payment.dto.response.PointInsufficientErrorResponse;
+import com.example.iter.payment.exception.PointInsufficientException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -46,6 +48,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.from(ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getMessage()));
+    }
+
+    // 포인트 부족 (B 담당) — message 외에 pointBalance/requiredAmount를 같이 내려줘야 해서 별도 예외/응답 타입으로 분리
+    @ExceptionHandler(PointInsufficientException.class)
+    public ResponseEntity<PointInsufficientErrorResponse> handlePointInsufficient(PointInsufficientException e) {
+        log.warn("PointInsufficient: balance={}, required={}", e.getPointBalance(), e.getRequiredAmount());
+        return ResponseEntity
+                .status(ErrorCode.POINT_INSUFFICIENT.getStatus())
+                .body(PointInsufficientErrorResponse.of(e.getMessage(), e.getPointBalance(), e.getRequiredAmount()));
     }
 
     // 인가 실패 (소유권 없음, 권한 부족 등 — @PreAuthorize에서 발생)
