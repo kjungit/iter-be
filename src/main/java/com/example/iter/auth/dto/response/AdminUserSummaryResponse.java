@@ -20,7 +20,7 @@ public record AdminUserSummaryResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getNickName(),
+                user.getNickname(),
                 user.getRole(),
                 user.getStatus(),
                 user.getCreatedAt()

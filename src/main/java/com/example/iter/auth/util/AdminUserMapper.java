@@ -19,7 +19,7 @@ public class AdminUserMapper {
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getNickName(),
+                user.getNickname(),
                 user.getPhone(),
                 user.getRole(),
                 user.getStatus(),

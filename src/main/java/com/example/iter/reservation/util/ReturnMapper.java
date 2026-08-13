@@ -95,7 +95,7 @@ public class ReturnMapper {
     private UserSummaryResponse toUserSummary(User user) {
         return new UserSummaryResponse(
                 user.getId(),
-                user.getNickName()
+                user.getNickname()
         );
     }
 

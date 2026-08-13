@@ -306,14 +306,14 @@ public class ReturnService {
         boolean owner = equipment.isOwnedBy(userId);
 
         if (!renter && !owner) {
-            throw new CustomException(ErrorCode.ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
 
     // 로그인 사용자가 장비 등록자인지 확인합니다.
     private void validateOwner(Long ownerId, Equipment equipment) {
         if (!equipment.isOwnedBy(ownerId)) {
-            throw new CustomException(ErrorCode.ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
 

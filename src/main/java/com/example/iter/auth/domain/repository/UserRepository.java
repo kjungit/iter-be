@@ -31,7 +31,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 :keyword is null
                 or lower(u.email) like lower(concat('%', :keyword, '%'))
                 or lower(u.name) like lower(concat('%', :keyword, '%'))
-                or lower(coalesce(u.nickName, ''))
+                or lower(coalesce(u.nickname, ''))
                     like lower(concat('%', :keyword, '%'))
               )
         """)
