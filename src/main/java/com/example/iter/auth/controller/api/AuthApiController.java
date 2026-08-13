@@ -6,12 +6,15 @@ import com.example.iter.auth.dto.request.SignUpRequest;
 import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
 import com.example.iter.auth.service.AuthService;
+import com.example.iter.common.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,5 +52,14 @@ public class AuthApiController {
         return ResponseEntity.ok(response);
     }
 
-    // TODO: POST /logout
+    @Operation(summary = "로그아웃", description = "현재 세션의 Refresh Token을 폐기합니다.",
+            security = @SecurityRequirement(name = "JWT"))
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        authService.logout(principal.getUser().getId(), request);
+        return ResponseEntity.noContent().build();
+    }
 }

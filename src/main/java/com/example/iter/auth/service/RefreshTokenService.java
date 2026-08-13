@@ -91,6 +91,15 @@ public class RefreshTokenService {
         );
     }
 
+    @Transactional
+    public void revoke(Long authenticatedUserId, String rawRefreshToken) {
+        String tokenHash = refreshTokenHasher.hash(rawRefreshToken);
+        refreshTokenRepository.findWithLockByTokenHash(tokenHash)
+                .filter(token -> token.getUserId().equals(authenticatedUserId))
+                .filter(token -> !token.isRevoked())
+                .ifPresent(token -> token.revoke(LocalDateTime.now()));
+    }
+
     private void validateRefreshToken(String rawRefreshToken) {
         TokenStatus status = jwtTokenProvider.validateRefreshToken(rawRefreshToken);
         if (status == TokenStatus.EXPIRED) {

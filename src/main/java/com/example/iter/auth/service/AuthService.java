@@ -67,4 +67,8 @@ public class AuthService {
     public TokenResponse refresh(RefreshTokenRequest request) {
         return refreshTokenService.rotate(request.refreshToken());
     }
+
+    public void logout(Long userId, RefreshTokenRequest request) {
+        refreshTokenService.revoke(userId, request.refreshToken());
+    }
 }
