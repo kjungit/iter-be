@@ -1,6 +1,7 @@
 package com.example.iter.auth.dto.response;
 
 import com.example.iter.auth.domain.entity.Role;
+import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 
 import java.time.LocalDateTime;
@@ -14,4 +15,15 @@ public record AdminUserSummaryResponse(
         UserStatus status,
         LocalDateTime createdAt
 ) {
+    public static AdminUserSummaryResponse from(User user) {
+        return new AdminUserSummaryResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getNickName(),
+                user.getRole(),
+                user.getStatus(),
+                user.getCreatedAt()
+        );
+    }
 }
