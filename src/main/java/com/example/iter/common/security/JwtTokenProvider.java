@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
+import java.util.UUID;
 
 // 토큰 생성/검증/해석을 전담하는 컴포넌트 (token 프로젝트의 TokenProvider와 동일한 설계를 따름)
 //
@@ -69,6 +70,7 @@ public class JwtTokenProvider {
                 .audience().add(jwtProperties.getAudience()).and()
                 .issuedAt(now)
                 .expiration(expiry)
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(user.getId()))
                 .claim(CLAIM_ROLE, user.getRole())
                 .claim(CLAIM_TOKEN_TYPE, tokenType)

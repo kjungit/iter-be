@@ -1,6 +1,7 @@
 package com.example.iter.auth.controller.api;
 
 import com.example.iter.auth.dto.request.LoginRequest;
+import com.example.iter.auth.dto.request.RefreshTokenRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
 import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
@@ -41,5 +42,12 @@ public class AuthApiController {
         return ResponseEntity.ok(response);
     }
 
-    // TODO: POST /refresh (refresh token으로 access token 재발급), POST /logout
+    @Operation(summary = "토큰 재발급", description = "Refresh Token을 회전하고 새로운 access token / refresh token을 발급합니다.")
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        TokenResponse response = authService.refresh(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // TODO: POST /logout
 }

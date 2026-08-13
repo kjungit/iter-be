@@ -4,6 +4,7 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
+import com.example.iter.auth.dto.request.RefreshTokenRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
 import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
@@ -63,5 +64,7 @@ public class AuthService {
         return new TokenResponse(accessToken, refreshToken);
     }
 
-    // TODO: refresh token 재발급 로직
+    public TokenResponse refresh(RefreshTokenRequest request) {
+        return refreshTokenService.rotate(request.refreshToken());
+    }
 }
