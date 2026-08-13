@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:iter;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+jwt:
+  issuer: iter
+  audience: iter-api
+  secret-key: dGVzdC1vbmx5LWl0ZXItand0LXNlY3JldC1rZXktbXVzdC1iZS1sb25nLWVub3VnaC1mb3ItaHM1MTItc2lnbmluZw==
+  access-token-validity: 15m
+  refresh-token-validity: 14d
+

@@ -43,8 +43,8 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        // 정지(SUSPENDED)된 계정은 잠금 처리로 간주 -> 로그인 자체를 막는다.
-        return user.getStatus() != com.example.iter.auth.domain.entity.UserStatus.SUSPENDED;
+        // 정지 회원도 기존 거래 처리를 위해 인증은 유지하고 신규 거래를 서비스 인가에서 차단한다.
+        return true;
     }
 
     @Override
