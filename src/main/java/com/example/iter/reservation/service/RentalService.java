@@ -50,7 +50,7 @@ public class RentalService {
         LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
         if (!startDate.isBefore(endDate)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
 
         if (rentalRepository.existsConflictingConfirmedRental(equipment.getId(), startDate, endDate)) {
@@ -101,7 +101,7 @@ public class RentalService {
                 .map(Payment::getStatus)
                 .orElse(null);
 
-        return RentalDetailResponse.of(rental, equipment, renter, owner, paymentStatus, isOverdue(rental));
+        return RentalDetailResponse.of(rental, equipment, renter, owner, paymentStatus, overdueDays(rental));
     }
 
     @Transactional
@@ -109,7 +109,7 @@ public class RentalService {
         Rental rental = getRentalOrThrow(rentalId);
 
         if (!isAdmin && !rental.isRenter(currentUserId)) {
-            throw new CustomException(ErrorCode.ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
         if (rental.getStatus() != RentalStatus.PENDING && rental.getStatus() != RentalStatus.REQUESTED) {
             throw new CustomException(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
@@ -137,7 +137,10 @@ public class RentalService {
                 .orElseThrow(() -> new CustomException(ErrorCode.RENTAL_NOT_FOUND));
     }
 
-    private boolean isOverdue(Rental rental) {
-        return LocalDate.now().isAfter(rental.getEndDate()) && !NOT_OVERDUE_ELIGIBLE.contains(rental.getStatus());
+    private int overdueDays(Rental rental) {
+        if (!LocalDate.now().isAfter(rental.getEndDate()) || NOT_OVERDUE_ELIGIBLE.contains(rental.getStatus())) {
+            return 0;
+        }
+        return (int) ChronoUnit.DAYS.between(rental.getEndDate(), LocalDate.now());
     }
 }

@@ -32,7 +32,7 @@ public class PaymentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.RENTAL_NOT_FOUND));
 
         if (!rental.isRenter(renterId)) {
-            throw new CustomException(ErrorCode.ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
         if (rental.getStatus() != RentalStatus.PENDING) {
             throw new CustomException(ErrorCode.RENTAL_NOT_PAYABLE);

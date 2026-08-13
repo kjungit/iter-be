@@ -1,7 +1,6 @@
 package com.example.iter.reservation.controller.api;
 
 import com.example.iter.auth.domain.entity.Role;
-import com.example.iter.common.response.ApiResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.reservation.dto.request.RentalCreateRequest;
 import com.example.iter.reservation.dto.response.RentalCancelResponse;
@@ -34,30 +33,30 @@ public class RentalApiController {
 
     @Operation(summary = "대여 요청 생성", security = @SecurityRequirement(name = "JWT"))
     @PostMapping
-    public ResponseEntity<ApiResponse<RentalCreateResponse>> createRental(
+    public ResponseEntity<RentalCreateResponse> createRental(
             @AuthenticationPrincipal CustomUserDetails principal,
             @Valid @RequestBody RentalCreateRequest request) {
         RentalCreateResponse response = rentalService.createRental(principal.getUser().getId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "대여 요청 상세 조회 (+ 연체 여부)", security = @SecurityRequirement(name = "JWT"))
     @GetMapping("/{rentalId}")
-    public ResponseEntity<ApiResponse<RentalDetailResponse>> getRentalDetail(
+    public ResponseEntity<RentalDetailResponse> getRentalDetail(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long rentalId) {
         RentalDetailResponse response = rentalService.getRentalDetail(
                 rentalId, principal.getUser().getId(), principal.getUser().getRole() == Role.ADMIN);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "승인 전 예약 취소", security = @SecurityRequirement(name = "JWT"))
     @DeleteMapping("/{rentalId}/cancel")
-    public ResponseEntity<ApiResponse<RentalCancelResponse>> cancelRental(
+    public ResponseEntity<RentalCancelResponse> cancelRental(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long rentalId) {
         RentalCancelResponse response = rentalService.cancelRental(
                 rentalId, principal.getUser().getId(), principal.getUser().getRole() == Role.ADMIN);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(response);
     }
 }

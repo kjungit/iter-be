@@ -8,6 +8,7 @@ import com.example.iter.reservation.domain.repository.RentalRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,7 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // 기술검토.md 1-2 권장: 같은 사용자가 여러 예약을 동시에 결제해도 point_balance가 음수가 되지 않는지 검증.
 // UserRepository.deductPointBalance의 조건부 UPDATE(WHERE point_balance >= amount)가 실제 DB 위에서
-// 동시 요청을 원자적으로 막아주는지 확인하는 게 목적이라 Mockito가 아닌 실제 DB(local MySQL)를 사용한다.
+// 동시 요청을 원자적으로 막아주는지 확인하는 게 목적이라 Mockito가 아닌 실제 DB(H2, test 프로파일)를 사용한다.
+@ActiveProfiles("test")
 @SpringBootTest
 class PaymentConcurrencyTest {
 

@@ -1,6 +1,5 @@
 package com.example.iter.payment.controller.api;
 
-import com.example.iter.common.response.ApiResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.payment.dto.response.PaymentResponse;
 import com.example.iter.payment.service.PaymentService;
@@ -25,10 +24,10 @@ public class PaymentApiController {
 
     @Operation(summary = "결제(포인트)", security = @SecurityRequirement(name = "JWT"))
     @PostMapping("/{rentalId}/payment")
-    public ResponseEntity<ApiResponse<PaymentResponse>> pay(
+    public ResponseEntity<PaymentResponse> pay(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long rentalId) {
         PaymentResponse response = paymentService.payRental(rentalId, principal.getUser().getId());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(response);
     }
 }
