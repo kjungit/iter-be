@@ -46,9 +46,16 @@ public class RentalService {
         if (equipment.isOwnedBy(renterId)) {
             throw new CustomException(ErrorCode.EQUIPMENT_SELF_RENTAL);
         }
+        if (!equipment.isActive()) {
+            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+        }
 
         LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
+
+        if (!startDate.isAfter(LocalDate.now())) {
+            throw new CustomException(ErrorCode.VALIDATION_ERROR);
+        }
         if (!startDate.isBefore(endDate)) {
             throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
@@ -101,7 +108,7 @@ public class RentalService {
                 .map(Payment::getStatus)
                 .orElse(null);
 
-        return RentalDetailResponse.of(rental, equipment, renter, owner, paymentStatus, overdueDays(rental));
+        return RentalDetailResponse.of(rental, renter, owner, paymentStatus, overdueDays(rental));
     }
 
     @Transactional

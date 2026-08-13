@@ -42,13 +42,17 @@ class RentalServiceTest {
     private RentalService rentalService;
 
     private Equipment equipment(Long ownerId) {
+        return equipment(ownerId, EquipmentStatus.ACTIVE);
+    }
+
+    private Equipment equipment(Long ownerId, EquipmentStatus status) {
         return Equipment.builder()
                 .id(1L)
                 .ownerId(ownerId)
                 .category("카메라")
                 .name("소니 A7C2")
                 .dailyPrice(BigDecimal.valueOf(30000))
-                .status(EquipmentStatus.ACTIVE)
+                .status(status)
                 .productCondition(ProductConditionType.NORMAL)
                 .build();
     }
@@ -78,6 +82,29 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EQUIPMENT_SELF_RENTAL);
+    }
+
+    @Test
+    void ACTIVE_상태가_아닌_장비는_대여할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L, EquipmentStatus.MAINTENANCE)));
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, request()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+    }
+
+    @Test
+    void 시작일이_오늘이거나_과거면_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        RentalCreateRequest todayRequest = new RentalCreateRequest(1L,
+                LocalDate.now(), LocalDate.now().plusDays(5),
+                "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, todayRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.example.iter.reservation.dto.response;
 
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
-import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
@@ -32,11 +31,11 @@ public record RentalDetailResponse(
         LocalDateTime createdAt
 ) {
     // paymentStatus는 아직 결제 전(PENDING) 예약이면 null — 결제 전 상태도 조회 가능해야 하므로 null 허용
-    public static RentalDetailResponse of(Rental rental, Equipment equipment, User renter, User owner,
+    public static RentalDetailResponse of(Rental rental, User renter, User owner,
                                            PaymentStatus paymentStatus, int overdueDays) {
         return new RentalDetailResponse(
                 rental.getId(),
-                RentalEquipmentSnapshotResponse.from(equipment),
+                RentalEquipmentSnapshotResponse.from(rental),
                 UserSummaryResponse.from(owner),
                 UserSummaryResponse.from(renter),
                 rental.getStartDate(),
