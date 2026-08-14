@@ -35,11 +35,10 @@ public enum ErrorCode {
     INVALID_USER_STATUS_TRANSITION(HttpStatus.CONFLICT,"허용되지 않는 회원 상태 변경입니다."),
 
     // Reservation - Return (C)
-    RENTAL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대여 거래입니다."),
     RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "수령 증빙을 찾을 수 없습니다."),
     RETURN_RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "반납 증빙을 찾을 수 없습니다."),
     RETURN_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 최종 확인된 반납 거래입니다."),
-    INVALID_RETURN_CONFIRMATION_STATUS(HttpStatus.CONFLICT, "반납 도착 확인 상태의 거래만 최종 확인할 수 있습니다.");
+    INVALID_RETURN_CONFIRMATION_STATUS(HttpStatus.CONFLICT, "반납 도착 확인 상태의 거래만 최종 확인할 수 있습니다."),
 
     // TODO: reservation / payment / delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
     // Reservation / Payment (B 담당 영역)
