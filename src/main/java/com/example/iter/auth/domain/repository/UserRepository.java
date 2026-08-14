@@ -7,9 +7,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -40,4 +42,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 회원 상태를 안전하게 변경할 수 있도록 대상 회원 행을 비관적 쓰기 락으로 조회합니다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findWithLockById(Long userId);
+    // 잔액 확인과 차감을 하나의 조건부 UPDATE로 원자적으로 처리해서 여러 결제가 동시에 들어와도 잔액보다 많은 금액이 차감되는 것을 방지한다
+    // — 조건부 UPDATE. 영향 row 0건이면 포인트 부족을 의미.
+    @Modifying
+    @Query("UPDATE User u SET u.pointBalance = u.pointBalance - :amount " +
+            "WHERE u.id = :userId AND u.pointBalance >= :amount")
+    int deductPointBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
+
+    @Modifying
+    @Query("UPDATE User u SET u.pointBalance = u.pointBalance + :amount WHERE u.id = :userId")
+    int refundPointBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
 }
