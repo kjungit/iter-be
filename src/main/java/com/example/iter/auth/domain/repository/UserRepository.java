@@ -39,5 +39,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 회원 상태를 안전하게 변경할 수 있도록 대상 회원 행을 비관적 쓰기 락으로 조회합니다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<User> findWithLockById(Long userid);
+    Optional<User> findWithLockById(Long userId);
 }
