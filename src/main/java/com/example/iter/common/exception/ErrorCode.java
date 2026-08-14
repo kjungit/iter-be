@@ -28,9 +28,30 @@ public enum ErrorCode {
     // Device
     EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장비입니다."),
     EQUIPMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인 소유의 장비가 아닙니다."),
-    EQUIPMENT_NOT_AVAILABLE(HttpStatus.CONFLICT, "대여할 수 없는 상태의 장비입니다.");
+    EQUIPMENT_NOT_AVAILABLE(HttpStatus.CONFLICT, "대여할 수 없는 상태의 장비입니다."),
+
+    // Admin (C)
+    ADMIN_SUSPENSION_NOT_ALLOWED(HttpStatus.FORBIDDEN,"관리자 계정은 정지할 수 없습니다."),
+    INVALID_USER_STATUS_TRANSITION(HttpStatus.CONFLICT,"허용되지 않는 회원 상태 변경입니다."),
+
+    // Reservation - Return (C)
+    RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "수령 증빙을 찾을 수 없습니다."),
+    RETURN_RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "반납 증빙을 찾을 수 없습니다."),
+    RETURN_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 최종 확인된 반납 거래입니다."),
+    INVALID_RETURN_CONFIRMATION_STATUS(HttpStatus.CONFLICT, "반납 도착 확인 상태의 거래만 최종 확인할 수 있습니다."),
 
     // TODO: reservation / payment / delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
+    // Reservation / Payment (B 담당 영역)
+    EQUIPMENT_SELF_RENTAL(HttpStatus.FORBIDDEN, "본인이 등록한 장비는 대여할 수 없습니다."),
+    RENTAL_PERIOD_CONFLICT(HttpStatus.CONFLICT, "선택한 기간에 이미 확정된 예약이 있습니다."),
+    RENTAL_NOT_FOUND(HttpStatus.NOT_FOUND, "예약 정보를 찾을 수 없습니다."),
+    RENTAL_NOT_PARTY(HttpStatus.FORBIDDEN, "거래 당사자만 조회할 수 있습니다."),
+    RENTAL_NOT_PAYABLE(HttpStatus.CONFLICT, "결제 대기 상태의 예약만 결제할 수 있습니다."),
+    PAYMENT_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 결제가 완료된 예약입니다."),
+    RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "승인 이후 예약은 취소할 수 없습니다."),
+    POINT_INSUFFICIENT(HttpStatus.CONFLICT, "포인트가 부족합니다.");
+
+    // TODO: delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
 
     private final HttpStatus status;
     private final String message;

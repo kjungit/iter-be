@@ -88,4 +88,14 @@ public class Rental extends BaseTimeEntity {
     public void changeStatus(RentalStatus status) {
         this.status = status;
     }
+
+    // 정상 반납으로 거래를 완료합니다.
+    public void completeReturn() {
+        this.status = RentalStatus.COMPLETED;
+    }
+
+    // 비정상 반납으로 거래를 분쟁 상태로 변경합니다.
+    public void openReturnDispute() {
+        this.status = RentalStatus.DISPUTED;
+    }
 }
