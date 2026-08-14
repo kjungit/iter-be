@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -48,6 +49,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.from(ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
+            HttpMediaTypeNotSupportedException e
+    ) {
+        log.warn("지원하지 않는 Content-Type: {}", e.getContentType());
+        return ResponseEntity
+                .status(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getStatus())
+                .body(ErrorResponse.from(
+                        ErrorCode.UNSUPPORTED_MEDIA_TYPE.name(),
+                        ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()
+                ));
     }
 
     // 포인트 부족 (B 담당) — message 외에 pointBalance/requiredAmount를 같이 내려줘야 해서 별도 예외/응답 타입으로 분리

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +22,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -64,7 +64,7 @@ public class AuthApiController {
             @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
                     description = "XSRF-TOKEN Cookie와 동일한 CSRF Token")
     })
-    @PostMapping(value = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/refresh")
     public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request) {
         String rawRefreshToken = refreshTokenCookieManager.extract(request)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_REFRESH_TOKEN));
@@ -80,7 +80,7 @@ public class AuthApiController {
             @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
                     description = "XSRF-TOKEN Cookie와 동일한 CSRF Token")
     })
-    @PostMapping(value = "/logout", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal CustomUserDetails principal,
             HttpServletRequest request
@@ -94,8 +94,9 @@ public class AuthApiController {
     }
 
     @Operation(summary = "CSRF Token 발급", description = "Refresh Token Cookie를 사용하는 인증 요청용 CSRF Token을 발급합니다.")
+    @ApiResponse(responseCode = "204", description = "CSRF Token Cookie 발급 완료")
     @GetMapping("/csrf")
-    public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
+    public ResponseEntity<Void> csrf(@Parameter(hidden = true) CsrfToken csrfToken) {
         csrfToken.getToken();
         return ResponseEntity.noContent().build();
     }

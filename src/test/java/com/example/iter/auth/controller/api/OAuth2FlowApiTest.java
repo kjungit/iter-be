@@ -9,6 +9,7 @@ import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.service.OAuthPendingTokenService;
 import com.example.iter.auth.service.model.KakaoUserInfo;
+import com.example.iter.common.security.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +65,9 @@ class OAuth2FlowApiTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     @AfterEach
@@ -214,9 +218,36 @@ class OAuth2FlowApiTest {
         assertThat(refreshTokenRepository.count()).isZero();
     }
 
+    @Test
+    void linkEndpointRequiresAuthentication() throws Exception {
+        User targetUser = saveUser("oauth-api-link-auth@example.com");
+        String oauthToken = issueSignupActionToken("kakao-api-700", targetUser.getEmail());
+
+        mockMvc.perform(linkRequest(null, oauthToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+
+        assertThat(oAuthAccountRepository.count()).isZero();
+    }
+
+    @Test
+    void linkEndpointConnectsKakaoAccountToAuthenticatedTargetUser() throws Exception {
+        User targetUser = saveUser("oauth-api-link@example.com");
+        String oauthToken = issueSignupActionToken("kakao-api-800", targetUser.getEmail());
+        String accessToken = jwtTokenProvider.generateAccessToken(targetUser);
+
+        mockMvc.perform(linkRequest(accessToken, oauthToken))
+                .andExpect(status().isNoContent());
+
+        OAuthAccount linkedAccount = oAuthAccountRepository.findByProviderAndProviderUserId(
+                OAuthProvider.KAKAO,
+                "kakao-api-800"
+        ).orElseThrow();
+        assertThat(linkedAccount.getUserId()).isEqualTo(targetUser.getId());
+    }
+
     private MockHttpServletRequestBuilder exchangeRequest(MockHttpSession session) {
         return post("/api/v1/auth/oauth2/kakao/exchange")
-                .contentType(MediaType.APPLICATION_JSON)
                 .session(session);
     }
 
@@ -232,6 +263,18 @@ class OAuth2FlowApiTest {
                           "phone":"010-1234-5678"
                         }
                         """.formatted(oauthToken, email));
+    }
+
+    private MockHttpServletRequestBuilder linkRequest(String accessToken, String oauthToken) {
+        MockHttpServletRequestBuilder request = post("/api/v1/users/me/oauth2/kakao/link")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"oauthToken":"%s"}
+                        """.formatted(oauthToken));
+        if (accessToken != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+        }
+        return request;
     }
 
     private MockHttpServletRequestBuilder withCsrf(MockHttpServletRequestBuilder request) throws Exception {

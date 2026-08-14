@@ -13,6 +13,7 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
 
     // Auth
@@ -30,7 +31,7 @@ public enum ErrorCode {
     OAUTH_TOKEN_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용한 OAuth 일회용 토큰입니다."),
     OAUTH_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 연결된 OAuth 계정입니다."),
     OAUTH_LINK_TARGET_MISMATCH(HttpStatus.FORBIDDEN, "해당 회원에게 발급된 계정 연결 요청이 아닙니다."),
-    KAKAO_API_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "카카오 인증 서버를 사용할 수 없습니다."),
+    OAUTH_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "카카오 계정 이메일과 가입 이메일이 일치하지 않습니다."),
 
     // Device
     EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장비입니다."),

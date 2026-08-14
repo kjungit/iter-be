@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -182,8 +181,7 @@ class AuthLogoutApiTest {
     }
 
     private MockHttpServletRequestBuilder logoutRequest(String accessToken, String refreshToken) {
-        MockHttpServletRequestBuilder request = post("/api/v1/auth/logout")
-                .contentType(MediaType.APPLICATION_JSON);
+        MockHttpServletRequestBuilder request = post("/api/v1/auth/logout");
         if (accessToken != null) {
             request.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
         }

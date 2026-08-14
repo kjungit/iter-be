@@ -47,14 +47,15 @@ public class OAuth2AuthService {
                 pending.provider(), pending.providerUserId()).isPresent()) {
             throw new CustomException(ErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED);
         }
-        if (userRepository.existsByEmail(request.email())) {
+        String signupEmail = resolveSignupEmail(pending.email(), request.email());
+        if (userRepository.existsByEmail(signupEmail)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         User user;
         try {
             user = userRepository.saveAndFlush(User.builder()
-                    .email(request.email())
+                    .email(signupEmail)
                     .password(null)
                     .name(request.name())
                     .nickname(request.nickname())
@@ -67,6 +68,16 @@ public class OAuth2AuthService {
         saveOAuthAccount(user.getId(), pending);
 
         return authService.issueTokens(user);
+    }
+
+    private String resolveSignupEmail(String kakaoEmail, String requestedEmail) {
+        if (kakaoEmail == null) {
+            return requestedEmail;
+        }
+        if (!kakaoEmail.equalsIgnoreCase(requestedEmail)) {
+            throw new CustomException(ErrorCode.OAUTH_EMAIL_MISMATCH);
+        }
+        return kakaoEmail;
     }
 
     @Transactional

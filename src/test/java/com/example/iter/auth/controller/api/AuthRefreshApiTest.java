@@ -82,8 +82,7 @@ class AuthRefreshApiTest {
 
     @Test
     void missingRefreshCookieReturnsInvalidRefreshToken() throws Exception {
-        mockMvc.perform(withCsrf(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)))
+        mockMvc.perform(withCsrf(post("/api/v1/auth/refresh")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
     }
@@ -143,8 +142,7 @@ class AuthRefreshApiTest {
 
     private MockHttpServletRequestBuilder refreshRequest(String refreshToken) {
         return post("/api/v1/auth/refresh")
-                .cookie(new Cookie(REFRESH_COOKIE_NAME, refreshToken))
-                .contentType(MediaType.APPLICATION_JSON);
+                .cookie(new Cookie(REFRESH_COOKIE_NAME, refreshToken));
     }
 
     private MockHttpServletRequestBuilder withCsrf(MockHttpServletRequestBuilder request) throws Exception {

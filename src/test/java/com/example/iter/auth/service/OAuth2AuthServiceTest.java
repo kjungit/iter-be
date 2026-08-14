@@ -132,6 +132,36 @@ class OAuth2AuthServiceTest {
     }
 
     @Test
+    void kakaoEmailCannotBeChangedDuringSignup() {
+        String exchangeCode = issueExchange("kakao-201", "verified@example.com", "신규회원");
+        OAuthExchangeResult.ActionRequired actionRequired =
+                (OAuthExchangeResult.ActionRequired) oAuth2AuthService.exchange(exchangeCode);
+
+        KakaoSignUpRequest mismatchedRequest = new KakaoSignUpRequest(
+                actionRequired.response().oauthToken(),
+                "changed@example.com",
+                "홍길동",
+                "길동",
+                "010-1234-5678"
+        );
+        assertCustomError(
+                () -> oAuth2AuthService.signUp(mismatchedRequest),
+                ErrorCode.OAUTH_EMAIL_MISMATCH
+        );
+        assertThat(userRepository.count()).isZero();
+        assertThat(oAuthAccountRepository.count()).isZero();
+
+        oAuth2AuthService.signUp(new KakaoSignUpRequest(
+                actionRequired.response().oauthToken(),
+                "verified@example.com",
+                "홍길동",
+                "길동",
+                "010-1234-5678"
+        ));
+        assertThat(userRepository.findByEmail("verified@example.com")).isPresent();
+    }
+
+    @Test
     void sameEmailRequiresLinkAndTokenIsBoundToThatUser() {
         User targetUser = savePasswordUser("existing@example.com");
         User anotherUser = savePasswordUser("another@example.com");
