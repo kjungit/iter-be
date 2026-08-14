@@ -37,4 +37,9 @@ public class Payment extends BaseTimeEntity {
 
     @Column(name = "refunded_at")
     private LocalDateTime refundedAt;
+
+    public void markRefunded() {
+        this.status = PaymentStatus.REFUNDED;
+        this.refundedAt = LocalDateTime.now();
+    }
 }

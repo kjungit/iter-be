@@ -61,6 +61,10 @@ public class Equipment extends BaseTimeEntity {
         return this.ownerId.equals(userId);
     }
 
+    public boolean isActive() {
+        return this.status == EquipmentStatus.ACTIVE;
+    }
+
     public void changeStatus(EquipmentStatus status) {
         this.status = status;
     }
