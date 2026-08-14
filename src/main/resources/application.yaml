@@ -18,6 +18,19 @@ jwt:
   access-token-validity: 15m
   refresh-token-validity: 14d
 
+auth:
+  refresh-cookie:
+    name: __Secure-iter-refresh
+    secure: true
+    http-only: true
+    same-site: Lax
+    path: /api/v1/auth
+    max-age: 14d
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

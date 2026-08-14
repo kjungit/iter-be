@@ -5,9 +5,10 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.service.AuthService;
 import com.example.iter.auth.service.RefreshTokenHasher;
+import com.example.iter.auth.service.model.IssuedTokenPair;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +20,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthLogoutApiTest {
+
+    private static final String REFRESH_COOKIE_NAME = "iter-refresh";
+    private static final String CSRF_COOKIE_NAME = "XSRF-TOKEN";
+    private static final String CSRF_HEADER_NAME = "X-XSRF-TOKEN";
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,34 +65,50 @@ class AuthLogoutApiTest {
     }
 
     @Test
-    void logoutReturnsNoContentAndRevokesRefreshToken() throws Exception {
+    void logoutRevokesRefreshTokenAndDeletesCookie() throws Exception {
         User user = saveUser("api-logout@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+        MvcResult result = mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), tokens.refreshToken())))
                 .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+                .andExpect(content().string(""))
+                .andReturn();
 
         assertThat(findByRawToken(tokens.refreshToken()).isRevoked()).isTrue();
+        Cookie deletedCookie = result.getResponse().getCookie(REFRESH_COOKIE_NAME);
+        assertThat(deletedCookie).isNotNull();
+        assertThat(deletedCookie.getMaxAge()).isZero();
     }
 
     @Test
     void repeatedLogoutReturnsNoContent() throws Exception {
         User user = saveUser("api-idempotent@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), tokens.refreshToken())))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), tokens.refreshToken())))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void missingRefreshCookieReturnsNoContentAndDeletesCookie() throws Exception {
+        User user = saveUser("api-no-cookie@example.com");
+        IssuedTokenPair tokens = login(user);
+
+        MvcResult result = mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), null)))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        assertThat(result.getResponse().getCookie(REFRESH_COOKIE_NAME).getMaxAge()).isZero();
     }
 
     @Test
     void missingDatabaseTokenReturnsNoContent() throws Exception {
         User user = saveUser("api-missing@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), "not-stored-refresh-token"))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), "not-stored-refresh-token")))
                 .andExpect(status().isNoContent());
     }
 
@@ -92,10 +116,10 @@ class AuthLogoutApiTest {
     void anotherUsersRefreshTokenReturnsNoContentWithoutRevokingIt() throws Exception {
         User owner = saveUser("api-owner@example.com");
         User requester = saveUser("api-requester@example.com");
-        TokenResponse ownerTokens = login(owner);
-        TokenResponse requesterTokens = login(requester);
+        IssuedTokenPair ownerTokens = login(owner);
+        IssuedTokenPair requesterTokens = login(requester);
 
-        mockMvc.perform(logoutRequest(requesterTokens.accessToken(), ownerTokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(requesterTokens.accessToken(), ownerTokens.refreshToken())))
                 .andExpect(status().isNoContent());
 
         assertThat(findByRawToken(ownerTokens.refreshToken()).isRevoked()).isFalse();
@@ -103,9 +127,7 @@ class AuthLogoutApiTest {
 
     @Test
     void unauthenticatedLogoutReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshRequest("any-refresh-token")))
+        mockMvc.perform(withCsrf(logoutRequest(null, "any-refresh-token")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
@@ -113,32 +135,33 @@ class AuthLogoutApiTest {
     @Test
     void forgedAccessTokenReturnsUnauthorized() throws Exception {
         User user = saveUser("api-forged-access@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken() + "forged", tokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken() + "forged", tokens.refreshToken())))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void blankRefreshTokenReturnsValidationError() throws Exception {
-        User user = saveUser("api-blank-logout@example.com");
-        TokenResponse tokens = login(user);
+    void missingCsrfTokenReturnsForbidden() throws Exception {
+        User user = saveUser("api-no-csrf-logout@example.com");
+        IssuedTokenPair tokens = login(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), " "))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("Refresh Token은 필수입니다."));
+        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        assertThat(findByRawToken(tokens.refreshToken()).isRevoked()).isFalse();
     }
 
     @Test
     void suspendedUserCanLogout() throws Exception {
         User user = saveUser("api-suspended-logout@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
         user.suspend();
         userRepository.saveAndFlush(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), tokens.refreshToken())))
                 .andExpect(status().isNoContent());
 
         assertThat(findByRawToken(tokens.refreshToken()).isRevoked()).isTrue();
@@ -147,34 +170,46 @@ class AuthLogoutApiTest {
     @Test
     void deletedUserReturnsUnauthorized() throws Exception {
         User user = saveUser("api-deleted-logout@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
         user.withdraw();
         userRepository.saveAndFlush(user);
 
-        mockMvc.perform(logoutRequest(tokens.accessToken(), tokens.refreshToken()))
+        mockMvc.perform(withCsrf(logoutRequest(tokens.accessToken(), tokens.refreshToken())))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
 
         assertThat(findByRawToken(tokens.refreshToken()).getRevokedAt()).isNull();
     }
 
-    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder logoutRequest(
-            String accessToken,
-            String refreshToken
-    ) {
-        return post("/api/v1/auth/logout")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(refreshRequest(refreshToken));
+    private MockHttpServletRequestBuilder logoutRequest(String accessToken, String refreshToken) {
+        MockHttpServletRequestBuilder request = post("/api/v1/auth/logout")
+                .contentType(MediaType.APPLICATION_JSON);
+        if (accessToken != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+        }
+        if (refreshToken != null) {
+            request.cookie(new Cookie(REFRESH_COOKIE_NAME, refreshToken));
+        }
+        return request;
     }
 
-    private String refreshRequest(String refreshToken) {
-        return """
-                {"refreshToken":"%s"}
-                """.formatted(refreshToken);
+    private MockHttpServletRequestBuilder withCsrf(MockHttpServletRequestBuilder request) throws Exception {
+        Cookie csrfCookie = getCsrfCookie();
+        return request
+                .cookie(csrfCookie)
+                .header(CSRF_HEADER_NAME, csrfCookie.getValue());
     }
 
-    private TokenResponse login(User user) {
+    private Cookie getCsrfCookie() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/auth/csrf"))
+                .andExpect(status().isNoContent())
+                .andReturn();
+        Cookie csrfCookie = result.getResponse().getCookie(CSRF_COOKIE_NAME);
+        assertThat(csrfCookie).isNotNull();
+        return csrfCookie;
+    }
+
+    private IssuedTokenPair login(User user) {
         return authService.login(new LoginRequest(user.getEmail(), "Password123!"));
     }
 

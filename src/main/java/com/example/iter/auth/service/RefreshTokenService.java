@@ -5,8 +5,8 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
-import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.exception.RefreshTokenReuseException;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.security.JwtTokenProvider;
@@ -47,7 +47,7 @@ public class RefreshTokenService {
     }
 
     @Transactional(noRollbackFor = RefreshTokenReuseException.class)
-    public TokenResponse rotate(String rawRefreshToken) {
+    public IssuedTokenPair rotate(String rawRefreshToken) {
         validateRefreshToken(rawRefreshToken);
 
         String tokenHash = refreshTokenHasher.hash(rawRefreshToken);
@@ -85,7 +85,7 @@ public class RefreshTokenService {
         RefreshToken savedReplacement = refreshTokenRepository.saveAndFlush(replacementToken);
         currentToken.rotateTo(savedReplacement.getId(), now);
 
-        return new TokenResponse(
+        return new IssuedTokenPair(
                 jwtTokenProvider.generateAccessToken(user),
                 newRawRefreshToken
         );

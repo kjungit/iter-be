@@ -6,7 +6,7 @@ import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.security.JwtTokenProvider;
@@ -51,7 +51,7 @@ class AuthServiceLoginTest {
     void loginStoresOnlyHashedRefreshToken() {
         User user = saveUser(UserStatus.ACTIVE);
 
-        TokenResponse response = authService.login(new LoginRequest(user.getEmail(), "Password123!"));
+        IssuedTokenPair response = authService.login(new LoginRequest(user.getEmail(), "Password123!"));
 
         String tokenHash = refreshTokenHasher.hash(response.refreshToken());
         RefreshToken storedToken = refreshTokenRepository.findByTokenHash(tokenHash).orElseThrow();

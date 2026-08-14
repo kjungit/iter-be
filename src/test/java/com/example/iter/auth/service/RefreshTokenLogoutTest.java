@@ -5,7 +5,7 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.auth.exception.RefreshTokenReuseException;
 import com.example.iter.common.exception.ErrorCode;
 import org.junit.jupiter.api.AfterEach;
@@ -52,8 +52,8 @@ class RefreshTokenLogoutTest {
     @Test
     void revokesOnlyRequestedRefreshToken() {
         User user = saveUser("logout@example.com");
-        TokenResponse firstSession = login(user);
-        TokenResponse secondSession = login(user);
+        IssuedTokenPair firstSession = login(user);
+        IssuedTokenPair secondSession = login(user);
 
         refreshTokenService.revoke(user.getId(), firstSession.refreshToken());
 
@@ -104,7 +104,7 @@ class RefreshTokenLogoutTest {
                                 .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
-    private TokenResponse login(User user) {
+    private IssuedTokenPair login(User user) {
         return authService.login(new LoginRequest(user.getEmail(), "Password123!"));
     }
 

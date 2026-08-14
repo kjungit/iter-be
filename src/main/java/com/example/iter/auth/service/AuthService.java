@@ -4,10 +4,9 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
-import com.example.iter.auth.dto.request.RefreshTokenRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.security.JwtTokenProvider;
@@ -44,7 +43,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public IssuedTokenPair login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
@@ -61,14 +60,14 @@ public class AuthService {
 
         String accessToken = jwtTokenProvider.generateAccessToken(user);
         String refreshToken = refreshTokenService.issueForLogin(user);
-        return new TokenResponse(accessToken, refreshToken);
+        return new IssuedTokenPair(accessToken, refreshToken);
     }
 
-    public TokenResponse refresh(RefreshTokenRequest request) {
-        return refreshTokenService.rotate(request.refreshToken());
+    public IssuedTokenPair refresh(String rawRefreshToken) {
+        return refreshTokenService.rotate(rawRefreshToken);
     }
 
-    public void logout(Long userId, RefreshTokenRequest request) {
-        refreshTokenService.revoke(userId, request.refreshToken());
+    public void logout(Long userId, String rawRefreshToken) {
+        refreshTokenService.revoke(userId, rawRefreshToken);
     }
 }

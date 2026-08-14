@@ -6,7 +6,7 @@ import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.RefreshTokenRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.auth.exception.RefreshTokenReuseException;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
@@ -75,10 +75,10 @@ class RefreshTokenRotationTest {
     @Test
     void rotatesRefreshTokenWithinSameFamily() {
         User user = saveUser(UserStatus.ACTIVE, "active@example.com");
-        TokenResponse loginTokens = login(user);
+        IssuedTokenPair loginTokens = login(user);
         RefreshToken oldTokenBeforeRotation = findByRawToken(loginTokens.refreshToken());
 
-        TokenResponse rotatedTokens = refreshTokenService.rotate(loginTokens.refreshToken());
+        IssuedTokenPair rotatedTokens = refreshTokenService.rotate(loginTokens.refreshToken());
 
         RefreshToken oldToken = refreshTokenRepository.findById(oldTokenBeforeRotation.getId()).orElseThrow();
         RefreshToken newToken = findByRawToken(rotatedTokens.refreshToken());
@@ -142,7 +142,7 @@ class RefreshTokenRotationTest {
     @Test
     void rejectsSuspendedUser() {
         User user = saveUser(UserStatus.ACTIVE, "suspended@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
         user.suspend();
         userRepository.saveAndFlush(user);
 
@@ -152,7 +152,7 @@ class RefreshTokenRotationTest {
     @Test
     void rejectsDeletedUser() {
         User user = saveUser(UserStatus.ACTIVE, "deleted@example.com");
-        TokenResponse tokens = login(user);
+        IssuedTokenPair tokens = login(user);
         user.withdraw();
         userRepository.saveAndFlush(user);
 
@@ -162,8 +162,8 @@ class RefreshTokenRotationTest {
     @Test
     void reuseRevokesEveryActiveTokenInFamily() {
         User user = saveUser(UserStatus.ACTIVE, "reuse@example.com");
-        TokenResponse loginTokens = login(user);
-        TokenResponse rotatedTokens = refreshTokenService.rotate(loginTokens.refreshToken());
+        IssuedTokenPair loginTokens = login(user);
+        IssuedTokenPair rotatedTokens = refreshTokenService.rotate(loginTokens.refreshToken());
 
         assertThatThrownBy(() -> refreshTokenService.rotate(loginTokens.refreshToken()))
                 .isInstanceOfSatisfying(RefreshTokenReuseException.class,
@@ -195,7 +195,7 @@ class RefreshTokenRotationTest {
                     .map(future -> getWithin(future, 10, TimeUnit.SECONDS))
                     .toList();
 
-            assertThat(results).filteredOn(TokenResponse.class::isInstance).hasSize(1);
+            assertThat(results).filteredOn(IssuedTokenPair.class::isInstance).hasSize(1);
             assertThat(results).filteredOn(RefreshTokenReuseException.class::isInstance).hasSize(1);
         }
 
@@ -227,7 +227,7 @@ class RefreshTokenRotationTest {
         }
     }
 
-    private TokenResponse login(User user) {
+    private IssuedTokenPair login(User user) {
         return authService.login(new LoginRequest(user.getEmail(), "Password123!"));
     }
 

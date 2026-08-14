@@ -2,6 +2,6 @@
 build/
 .idea/
 *.iml
+.DS_Store
 
 src/main/resources/application-secret.yml
-
