@@ -21,7 +21,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -64,7 +63,7 @@ public class AuthApiController {
             @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
                     description = "XSRF-TOKEN Cookie와 동일한 CSRF Token")
     })
-    @PostMapping(value = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/refresh")
     public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request) {
         String rawRefreshToken = refreshTokenCookieManager.extract(request)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_REFRESH_TOKEN));
@@ -80,7 +79,7 @@ public class AuthApiController {
             @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
                     description = "XSRF-TOKEN Cookie와 동일한 CSRF Token")
     })
-    @PostMapping(value = "/logout", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal CustomUserDetails principal,
             HttpServletRequest request
