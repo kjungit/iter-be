@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -60,6 +61,17 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.from(
                         ErrorCode.VALIDATION_ERROR.name(),
                         ErrorCode.VALIDATION_ERROR.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        log.warn("요청 본문을 읽을 수 없음: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.from(
+                        ErrorCode.VALIDATION_ERROR.name(),
+                        ErrorCode.VALIDATION_ERROR.getMessage()
+                ));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
