@@ -40,6 +40,11 @@ public enum ErrorCode {
     RETURN_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 최종 확인된 반납 거래입니다."),
     INVALID_RETURN_CONFIRMATION_STATUS(HttpStatus.CONFLICT, "반납 도착 확인 상태의 거래만 최종 확인할 수 있습니다."),
 
+    // Report (C)
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 조회할 수 없는 신고입니다."),
+    DUPLICATE_ACTIVE_REPORT(HttpStatus.CONFLICT, "같은 대상에 처리 중인 신고가 이미 존재합니다."),
+    REPORT_SELF_TARGET_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신 또는 본인 소유 대상은 신고할 수 없습니다."),
+
     // TODO: reservation / payment / delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
     // Reservation / Payment (B 담당 영역)
     EQUIPMENT_SELF_RENTAL(HttpStatus.FORBIDDEN, "본인이 등록한 장비는 대여할 수 없습니다."),
