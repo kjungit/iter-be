@@ -24,6 +24,7 @@ public enum ErrorCode {
     USER_DELETED(HttpStatus.FORBIDDEN, "탈퇴한 회원입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."),
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "만료된 Refresh Token입니다."),
+    ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "기본 배송지를 찾을 수 없습니다."),
 
     // Device
     EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장비입니다."),
