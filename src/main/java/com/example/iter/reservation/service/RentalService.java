@@ -181,16 +181,21 @@ public class RentalService {
         equipment = equipmentRepository.findByIdForUpdate(equipment.getId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
-        // 1) 락을 잡은 상태에서 재검증 — 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
+        // 1) 락을 잡은 상태에서 재검증 — 요청 이후 관리자가 장비를 중지/삭제시켰다면 승인 불가
+        if (!equipment.isActive()) {
+            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+        }
+
+        // 2) 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
         if (rentalRepository.existsConflictingConfirmedRental(
                 equipment.getId(), rental.getStartDate(), rental.getEndDate())) {
             throw new CustomException(ErrorCode.RESERVATION_CONFLICT);
         }
 
-        // 2) 충돌 없음 확인되면 예약 승인
+        // 3) 충돌 없음 확인되면 예약 승인
         rental.approve();
 
-        // 3) 같은 장비가 겹치는 기간의 다른 REQUESTED 예약들은 이 트랜잭션 안에서 자동 거절+환불 진행
+        // 4) 같은 장비가 겹치는 기간의 다른 REQUESTED 예약들은 이 트랜잭션 안에서 자동 거절+환불 진행
         // - (별도 API 호출이 아니라, 승인 트랜잭션에 포함되어야 "1건만 확정"이 원자적으로 보장됨)
         List<Rental> competitors = rentalRepository.findOverlappingRequestedRentals(
                 equipment.getId(), rental.getId(), rental.getStartDate(), rental.getEndDate());

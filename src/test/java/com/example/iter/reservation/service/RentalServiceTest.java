@@ -160,6 +160,19 @@ class RentalServiceTest {
     }
 
     @Test
+    void 승인_시점에_장비가_비활성_상태면_승인할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(equipment(99L, EquipmentStatus.SUSPENDED)));
+
+        assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+    }
+
+    @Test
     void 이미_확정된_예약과_겹치면_RESERVATION_CONFLICT를_던진다() {
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
