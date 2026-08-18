@@ -8,6 +8,8 @@ import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.payment.domain.repository.PaymentRepository;
+import com.example.iter.reservation.domain.entity.Rental;
+import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.dto.request.RentalCreateRequest;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +63,22 @@ class RentalServiceTest {
     private RentalCreateRequest request() {
         return new RentalCreateRequest(1L, LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 25),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
+    }
+
+    private Rental rental(Long id, RentalStatus status) {
+        return Rental.builder()
+                .id(id)
+                .equipmentId(1L)
+                .renterId(2L)
+                .startDate(LocalDate.of(2026, 8, 20))
+                .endDate(LocalDate.of(2026, 8, 25))
+                .productNameSnapshot("소니 A7C2")
+                .categorySnapshot("카메라")
+                .dailyPriceSnapshot(BigDecimal.valueOf(30000))
+                .rentalDays(6)
+                .totalPrice(BigDecimal.valueOf(180000))
+                .status(status)
+                .build();
     }
 
     @Test
@@ -116,5 +135,104 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.RENTAL_PERIOD_CONFLICT);
+    }
+
+    @Test
+    void 장비_소유자가_아니면_승인할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+
+        assertThatThrownBy(() -> rentalService.approveRental(10L, 2L, false))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void REQUESTED_상태가_아니면_승인할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.APPROVED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+
+        assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RENTAL_NOT_APPROVABLE);
+    }
+
+    @Test
+    void 승인_시점에_장비가_비활성_상태면_승인할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(equipment(99L, EquipmentStatus.SUSPENDED)));
+
+        assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+    }
+
+    @Test
+    void 이미_확정된_예약과_겹치면_RESERVATION_CONFLICT를_던진다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RESERVATION_CONFLICT);
+    }
+
+    @Test
+    void 충돌이_없으면_승인되고_경쟁하는_REQUESTED_예약은_자동_거절된다() {
+        Rental target = rental(10L, RentalStatus.REQUESTED);
+        Rental competitor = rental(11L, RentalStatus.REQUESTED);
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any())).thenReturn(false);
+        when(rentalRepository.findOverlappingRequestedRentals(anyLong(), anyLong(), any(), any()))
+                .thenReturn(List.of(competitor));
+
+        var response = rentalService.approveRental(10L, 99L, false);
+
+        assertThat(response.status()).isEqualTo(RentalStatus.APPROVED);
+        assertThat(competitor.getStatus()).isEqualTo(RentalStatus.REJECTED);
+    }
+
+    @Test
+    void 권한이_없으면_거절할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+
+        assertThatThrownBy(() -> rentalService.rejectRental(10L, 2L, false, "사유"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void 이미_처리된_요청은_다시_거절할_수_없다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REJECTED)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+
+        assertThatThrownBy(() -> rentalService.rejectRental(10L, 99L, false, "사유"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RENTAL_ALREADY_PROCESSED);
+    }
+
+    @Test
+    void 정상_거절시_상태와_사유가_저장된다() {
+        Rental target = rental(10L, RentalStatus.REQUESTED);
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+
+        var response = rentalService.rejectRental(10L, 99L, false, "일정이 겹칩니다.");
+
+        assertThat(response.status()).isEqualTo(RentalStatus.REJECTED);
+        assertThat(response.reason()).isEqualTo("일정이 겹칩니다.");
     }
 }

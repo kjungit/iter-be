@@ -49,7 +49,10 @@ public enum ErrorCode {
     RENTAL_NOT_PAYABLE(HttpStatus.CONFLICT, "결제 대기 상태의 예약만 결제할 수 있습니다."),
     PAYMENT_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 결제가 완료된 예약입니다."),
     RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "승인 이후 예약은 취소할 수 없습니다."),
-    POINT_INSUFFICIENT(HttpStatus.CONFLICT, "포인트가 부족합니다.");
+    POINT_INSUFFICIENT(HttpStatus.CONFLICT, "포인트가 부족합니다."),
+    RENTAL_NOT_APPROVABLE(HttpStatus.CONFLICT, "승인 대기 상태의 예약만 승인할 수 있습니다."),
+    RENTAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 요청은 다시 처리할 수 없습니다."),
+    RESERVATION_CONFLICT(HttpStatus.CONFLICT, "이미 확정된 예약과 기간이 겹쳐 승인할 수 없습니다.");
 
     // TODO: delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
 

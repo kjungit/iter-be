@@ -1,6 +1,7 @@
 package com.example.iter.auth.domain.repository;
 
 import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.dto.response.UserSummaryResponse;
 import com.example.iter.auth.domain.entity.UserStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    @Query("SELECT new com.example.iter.auth.dto.response.UserSummaryResponse(u.id, u.nickname) " +
+            "FROM User u WHERE u.id = :id")
+    Optional<UserSummaryResponse> findSummaryById(@Param("id") Long id);
 
     /**
      * 상태가 null이면 전체 상태를 조회하고, 검색어가 null이면 검색 조건을 적용하지 않습니다.
