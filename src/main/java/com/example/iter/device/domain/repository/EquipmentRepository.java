@@ -23,6 +23,8 @@ import java.util.Optional;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
+    Optional<Equipment> findByIdAndStatus(Long id, EquipmentStatus status);
+
     @Query("""
             select new com.example.iter.device.service.model.EquipmentDetailRow(
                 e,
@@ -113,9 +115,8 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
     );
 
     /**
-     * 대여 승인(#6) 전용 — SELECT ... FOR UPDATE로 equipment 행을 잠근다.
-     * 같은 장비에 대한 동시 승인 요청이 이 락을 순차적으로 기다리게 해서,
-     * 트랜잭션 안에서 "재검증 -> 승인/충돌 판단 -> 경쟁 REQUESTED 자동거절"을 원자적으로 만든다.
+     * 대여 생성·승인 시 SELECT ... FOR UPDATE로 같은 장비에 대한 요청을 직렬화합니다.
+     * 트랜잭션 안에서 장비 상태와 기간 충돌을 재검증한 뒤 상태 변경을 수행합니다.
      */
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

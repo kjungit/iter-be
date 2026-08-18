@@ -78,7 +78,7 @@ class EquipmentQueryApiTest {
     }
 
     @Test
-    void 검색_가격_카테고리_기간을_필터링하고_확정_예약과_겹치는_장비는_제외한다() throws Exception {
+    void 검색_가격_카테고리_기간을_필터링하고_선점_예약과_겹치는_장비는_제외한다() throws Exception {
         LocalDate startDate = LocalDate.now().plusDays(10);
         LocalDate endDate = startDate.plusDays(3);
         Equipment available = saveEquipment("소니 카메라", EquipmentCategory.CAMERA, 30_000,
@@ -99,10 +99,9 @@ class EquipmentQueryApiTest {
                         .param("endDate", endDate.toString())
                         .param("sort", "PRICE_ASC"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].id").value(available.getId()))
-                .andExpect(jsonPath("$.content[1].id").value(requested.getId()))
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
