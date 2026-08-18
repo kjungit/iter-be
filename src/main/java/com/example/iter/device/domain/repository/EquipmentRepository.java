@@ -1,7 +1,10 @@
 package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -21,5 +24,31 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Equipment e WHERE e.id = :id")
     Optional<Equipment> findByIdForUpdate(@Param("id") Long id);
+
+    // 관리자가 장비명, 카테고리, 상태 조건으로 전체 장비를 조회합니다.
+    // 전달되지 않은 조건은 조회에 적용하지 않습니다.
+    @Query("""
+        select e
+        from Equipment e
+        where (
+                :keyword is null
+                or lower(e.name)
+                    like lower(concat('%', :keyword, '%'))
+              )
+          and (
+                :category is null
+                or lower(e.category) = lower(:category)
+              )
+          and (
+                :status is null
+                or e.status = :status
+              )
+        """)
+    Page<Equipment> searchForAdmin(
+            @Param("keyword") String keyword,
+            @Param("category") String category,
+            @Param("status") EquipmentStatus status,
+            Pageable pageable
+    );
 
 }

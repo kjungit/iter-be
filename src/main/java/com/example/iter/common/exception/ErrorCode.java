@@ -33,6 +33,8 @@ public enum ErrorCode {
     // Admin (C)
     ADMIN_SUSPENSION_NOT_ALLOWED(HttpStatus.FORBIDDEN,"관리자 계정은 정지할 수 없습니다."),
     INVALID_USER_STATUS_TRANSITION(HttpStatus.CONFLICT,"허용되지 않는 회원 상태 변경입니다."),
+    INVALID_EQUIPMENT_STATUS_TRANSITION(HttpStatus.CONFLICT, "허용되지 않는 장비 상태 변경입니다."),
+    INVALID_REPORT_STATUS_TRANSITION(HttpStatus.CONFLICT, "허용되지 않는 신고 상태 변경입니다."),
 
     // Reservation - Return (C)
     RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "수령 증빙을 찾을 수 없습니다."),

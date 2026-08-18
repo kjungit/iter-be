@@ -3,9 +3,11 @@ package com.example.iter.dispute.domain.repository;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,10 +22,8 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     // 로그인 사용자가 작성한 특정 신고를 조회합니다.
     Optional<Report> findByIdAndReporterId(Long reportId, Long reporterId);
 
-    /**
-     * 로그인 사용자가 작성한 신고를 대상 유형과 처리 상태로 필터링해 페이지 단위로 조회합니다.
-     * 대상 유형이나 처리 상태가 null이면 해당 조건은 적용하지 않습니다.
-     */
+    // 로그인 사용자가 작성한 신고를 대상 유형과 처리 상태로 필터링해 페이지 단위로 조회합니다.
+    // 대상 유형이나 처리 상태가 null이면 해당 조건은 적용하지 않습니다.
     @Query(
             value = """
                     select r
@@ -47,9 +47,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             Pageable pageable
     );
 
-    /**
-     * 같은 사용자가 같은 대상을 현재 처리 중인 상태로 신고했는지 확인합니다.
-     */
+    // 같은 사용자가 같은 대상을 현재 처리 중인 상태로 신고했는지 확인합니다.
     @Query("""
             select case when count(r.id) > 0 then true else false end
             from Report r
@@ -64,4 +62,31 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("targetId") Long targetId,
             @Param("statuses") Collection<ReportStatus> statuses
     );
+
+    // 관리자가 전체 신고를 대상 유형과 처리 상태로 필터링해 조회합니다. 대상 유형이나 처리 상태가 null이면 해당 조건은 적용하지 않습니다.
+    @Query(
+            value = """
+                select r
+                from Report r
+                where (:targetType is null or r.targetType = :targetType)
+                  and (:status is null or r.status = :status)
+                """,
+            countQuery = """
+                select count(r.id)
+                from Report r
+                where (:targetType is null or r.targetType = :targetType)
+                  and (:status is null or r.status = :status)
+                """
+    )
+    Page<Report> searchForAdmin(
+            @Param("targetType") ReportTargetType targetType,
+            @Param("status") ReportStatus status,
+            Pageable pageable
+    );
+
+    // 동일 신고의 상태 변경이 동시에 처리되지 않도록 신고 행을 비관적 쓰기 락으로 조회합니다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Report> findWithLockById(Long reportId);
 }
+
+
