@@ -5,8 +5,8 @@ import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.request.LoginRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
-import com.example.iter.auth.dto.response.TokenResponse;
 import com.example.iter.auth.dto.response.UserResponse;
+import com.example.iter.auth.service.model.IssuedTokenPair;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.security.JwtTokenProvider;
@@ -22,6 +22,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
@@ -41,8 +42,8 @@ public class AuthService {
         return UserResponse.from(savedUser);
     }
 
-    @Transactional(readOnly = true)
-    public TokenResponse login(LoginRequest request) {
+    @Transactional
+    public IssuedTokenPair login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
@@ -58,9 +59,15 @@ public class AuthService {
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
-        return new TokenResponse(accessToken, refreshToken);
+        String refreshToken = refreshTokenService.issueForLogin(user);
+        return new IssuedTokenPair(accessToken, refreshToken);
     }
 
-    // TODO: refresh token 재발급 로직 (refresh token 저장소를 어디에 둘지 팀 확정 필요 — Redis / DB 등)
+    public IssuedTokenPair refresh(String rawRefreshToken) {
+        return refreshTokenService.rotate(rawRefreshToken);
+    }
+
+    public void logout(Long userId, String rawRefreshToken) {
+        refreshTokenService.revoke(userId, rawRefreshToken);
+    }
 }

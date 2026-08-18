@@ -16,3 +16,7 @@ jwt:
   access-token-validity: 15m
   refresh-token-validity: 14d
 
+auth:
+  refresh-cookie:
+    name: iter-refresh
+    secure: false
