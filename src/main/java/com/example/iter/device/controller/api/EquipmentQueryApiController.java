@@ -1,6 +1,7 @@
 package com.example.iter.device.controller.api;
 
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
+import com.example.iter.device.dto.response.EquipmentDetailResponse;
 import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.service.EquipmentQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,6 +22,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class EquipmentQueryApiController {
 
     private final EquipmentQueryService equipmentQueryService;
+
+    @Operation(summary = "장비 상세 정보 조회", description = "공개 중인 장비의 상세 정보와 이미지, 소유자, 평점을 조회합니다.")
+    @GetMapping("/{equipmentId}")
+    public ResponseEntity<EquipmentDetailResponse> getEquipmentDetail(
+            @PathVariable Long equipmentId
+    ) {
+        return ResponseEntity.ok(equipmentQueryService.getEquipmentDetail(equipmentId));
+    }
 
     @Operation(summary = "장비 목록 조회", description = "공개 중인 장비를 검색 조건과 정렬 기준으로 조회합니다.")
     @GetMapping

@@ -35,7 +35,7 @@ public enum ErrorCode {
     OAUTH_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "카카오 계정 이메일과 가입 이메일이 일치하지 않습니다."),
 
     // Device
-    EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장비입니다."),
+    EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 조회할 수 없는 장비입니다."),
     EQUIPMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인 소유의 장비가 아닙니다."),
     EQUIPMENT_NOT_AVAILABLE(HttpStatus.CONFLICT, "대여할 수 없는 상태의 장비입니다."),
 
