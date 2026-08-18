@@ -1,0 +1,174 @@
+package com.example.iter.device.controller.api;
+
+import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
+import com.example.iter.device.domain.entity.EquipmentImage;
+import com.example.iter.device.domain.entity.EquipmentStatus;
+import com.example.iter.device.domain.entity.ProductConditionType;
+import com.example.iter.device.domain.entity.Review;
+import com.example.iter.device.domain.repository.EquipmentImageRepository;
+import com.example.iter.device.domain.repository.EquipmentRepository;
+import com.example.iter.device.domain.repository.ReviewRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ActiveProfiles("test")
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+class EquipmentDetailApiTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private EquipmentRepository equipmentRepository;
+    @Autowired
+    private EquipmentImageRepository equipmentImageRepository;
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @BeforeEach
+    void setUp() {
+        reviewRepository.deleteAll();
+        equipmentImageRepository.deleteAll();
+        equipmentRepository.deleteAll();
+    }
+
+    @Test
+    void 공개_장비의_상세_이미지_소유자_평점을_인증_없이_조회한다() throws Exception {
+        User owner = saveOwner("카메라주인");
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        saveImage(equipment, "https://example.com/images/second.jpg", 1, false);
+        EquipmentImage first = saveImage(
+                equipment, "https://example.com/images/first.jpg", 0, true);
+        saveReview(equipment, 4, 101L);
+        saveReview(equipment, 5, 102L);
+
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(equipment.getId()))
+                .andExpect(jsonPath("$.name").value("소니 A7C2"))
+                .andExpect(jsonPath("$.category").value("CAMERA"))
+                .andExpect(jsonPath("$.description").value("풀프레임 미러리스 카메라입니다."))
+                .andExpect(jsonPath("$.dailyPrice").value(30000))
+                .andExpect(jsonPath("$.availableFrom").value(LocalDate.now().plusDays(1).toString()))
+                .andExpect(jsonPath("$.availableTo").value(LocalDate.now().plusMonths(2).toString()))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.productCondition").value("NORMAL"))
+                .andExpect(jsonPath("$.conditionDetail").value("사용감이 적습니다."))
+                .andExpect(jsonPath("$.images.length()").value(2))
+                .andExpect(jsonPath("$.images[0].id").value(first.getId()))
+                .andExpect(jsonPath("$.images[0].imageUrl")
+                        .value("https://example.com/images/first.jpg"))
+                .andExpect(jsonPath("$.images[0].sortOrder").value(0))
+                .andExpect(jsonPath("$.images[0].thumbnail").value(true))
+                .andExpect(jsonPath("$.images[1].sortOrder").value(1))
+                .andExpect(jsonPath("$.owner.id").value(owner.getId()))
+                .andExpect(jsonPath("$.owner.nickname").value("카메라주인"))
+                .andExpect(jsonPath("$.averageRating").value(4.5))
+                .andExpect(jsonPath("$.reviewCount").value(2))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void 이미지와_리뷰가_없으면_빈_목록과_0을_반환한다() throws Exception {
+        User owner = saveOwner("장비주인");
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.images.length()").value(0))
+                .andExpect(jsonPath("$.averageRating").value(0.0))
+                .andExpect(jsonPath("$.reviewCount").value(0));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EquipmentStatus.class, names = "ACTIVE", mode = EnumSource.Mode.EXCLUDE)
+    void 공개_상태가_아닌_장비는_존재_여부를_숨기고_404를_반환한다(EquipmentStatus status) throws Exception {
+        User owner = saveOwner("비공개주인-" + status.name());
+        Equipment equipment = saveEquipment(owner.getId(), status);
+
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message")
+                        .value("존재하지 않거나 조회할 수 없는 장비입니다."));
+    }
+
+    @Test
+    void 존재하지_않는_장비는_404를_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", Long.MAX_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message")
+                        .value("존재하지 않거나 조회할 수 없는 장비입니다."));
+    }
+
+    private User saveOwner(String nickname) {
+        return userRepository.saveAndFlush(User.builder()
+                .email("detail-owner-" + System.nanoTime() + "@example.com")
+                .password("encoded-password")
+                .name("장비 소유자")
+                .nickname(nickname)
+                .phone("010-1111-2222")
+                .build());
+    }
+
+    private Equipment saveEquipment(Long ownerId, EquipmentStatus status) {
+        return equipmentRepository.saveAndFlush(Equipment.builder()
+                .ownerId(ownerId)
+                .category(EquipmentCategory.CAMERA)
+                .name("소니 A7C2")
+                .description("풀프레임 미러리스 카메라입니다.")
+                .dailyPrice(BigDecimal.valueOf(30_000))
+                .availableFrom(LocalDate.now().plusDays(1))
+                .availableTo(LocalDate.now().plusMonths(2))
+                .status(status)
+                .productCondition(ProductConditionType.NORMAL)
+                .conditionDetail("사용감이 적습니다.")
+                .build());
+    }
+
+    private EquipmentImage saveImage(
+            Equipment equipment,
+            String imageUrl,
+            int sortOrder,
+            boolean thumbnail
+    ) {
+        return equipmentImageRepository.saveAndFlush(EquipmentImage.builder()
+                .equipment(equipment)
+                .imageUrl(imageUrl)
+                .sortOrder(sortOrder)
+                .thumbnail(thumbnail)
+                .build());
+    }
+
+    private void saveReview(Equipment equipment, int rating, long rentalId) {
+        reviewRepository.save(Review.builder()
+                .rentalId(rentalId)
+                .equipment(equipment)
+                .userId(rentalId)
+                .rating(rating)
+                .content("상세 조회 테스트 리뷰")
+                .build());
+    }
+}
