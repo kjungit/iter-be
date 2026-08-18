@@ -101,17 +101,15 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             "SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
             "FROM Rental r " +
             "WHERE r.equipmentId = :equipmentId " +
-            "AND r.status NOT IN (RentalStatus.PENDING, " +
-            "                     RentalStatus.REQUESTED, " +
-            "                     RentalStatus.REJECTED, " +
-            "                     RentalStatus.CANCELED) " +
+            "AND r.status NOT IN :excludedStatuses " +
             "AND r.startDate <= :endDate " +
             "AND r.endDate >= :startDate"
     )
     boolean existsConflictingConfirmedRental(
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+            @Param("endDate") LocalDate endDate,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
                                             );
 
 }

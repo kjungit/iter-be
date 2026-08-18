@@ -13,6 +13,7 @@ import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.PaymentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
+import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.dto.request.RentalCreateRequest;
 import com.example.iter.reservation.dto.response.RentalCancelResponse;
@@ -68,7 +69,11 @@ public class RentalService {
             throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
 
-        if (rentalRepository.existsConflictingConfirmedRental(equipment.getId(), startDate, endDate)) {
+        if (rentalRepository.existsConflictingConfirmedRental(
+                equipment.getId(),
+                startDate,
+                endDate,
+                RentalConflictPolicy.nonConfirmedStatuses())) {
             throw new CustomException(ErrorCode.RENTAL_PERIOD_CONFLICT);
         }
 
@@ -81,7 +86,7 @@ public class RentalService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .productNameSnapshot(equipment.getName())
-                .categorySnapshot(equipment.getCategory())
+                .categorySnapshot(equipment.getCategory().name())
                 .dailyPriceSnapshot(equipment.getDailyPrice())
                 .rentalDays(rentalDays)
                 .totalPrice(totalPrice)
@@ -188,7 +193,10 @@ public class RentalService {
 
         // 2) 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
         if (rentalRepository.existsConflictingConfirmedRental(
-                equipment.getId(), rental.getStartDate(), rental.getEndDate())) {
+                equipment.getId(),
+                rental.getStartDate(),
+                rental.getEndDate(),
+                RentalConflictPolicy.nonConfirmedStatuses())) {
             throw new CustomException(ErrorCode.RESERVATION_CONFLICT);
         }
 
