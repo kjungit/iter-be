@@ -85,7 +85,7 @@ class RentalServiceTest {
     @Test
     void 대여_요청_생성시_일수와_총액을_계산한다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = rentalService.createRental(2L, request());
@@ -130,7 +130,7 @@ class RentalServiceTest {
     @Test
     void 겹치는_확정_예약이_있으면_요청할_수_없다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -178,7 +178,7 @@ class RentalServiceTest {
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
                 .isInstanceOf(CustomException.class)
@@ -193,7 +193,7 @@ class RentalServiceTest {
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
         when(rentalRepository.findOverlappingRequestedRentals(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of(competitor));
 

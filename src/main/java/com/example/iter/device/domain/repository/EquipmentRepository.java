@@ -2,6 +2,7 @@ package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
+import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.service.model.EquipmentDetailRow;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.reservation.domain.entity.RentalStatus;
@@ -19,6 +20,8 @@ import java.time.LocalDate;
 import java.util.Collection;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
+
+    Optional<Equipment> findByIdAndStatus(Long id, EquipmentStatus status);
 
     @Query("""
             select new com.example.iter.device.service.model.EquipmentDetailRow(

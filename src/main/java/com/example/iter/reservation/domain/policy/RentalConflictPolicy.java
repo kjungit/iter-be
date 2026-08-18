@@ -4,22 +4,21 @@ import com.example.iter.reservation.domain.entity.RentalStatus;
 
 import java.util.Set;
 
-/**
- * 예약 기간 충돌을 판단할 때 확정 예약으로 취급하지 않는 상태를 정의합니다.
- */
+/** 예약 기간을 점유하지 않는 종료 전·종료 상태를 정의합니다. */
 public final class RentalConflictPolicy {
 
-    private static final Set<RentalStatus> NON_CONFIRMED_STATUSES = Set.of(
+    private static final Set<RentalStatus> NON_OCCUPYING_STATUSES = Set.of(
             RentalStatus.PENDING,
             RentalStatus.REQUESTED,
             RentalStatus.REJECTED,
-            RentalStatus.CANCELED
+            RentalStatus.CANCELED,
+            RentalStatus.COMPLETED
     );
 
     private RentalConflictPolicy() {
     }
 
-    public static Set<RentalStatus> nonConfirmedStatuses() {
-        return NON_CONFIRMED_STATUSES;
+    public static Set<RentalStatus> nonOccupyingStatuses() {
+        return NON_OCCUPYING_STATUSES;
     }
 }
