@@ -23,6 +23,7 @@ public enum ErrorCode {
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다."),
     PASSWORD_NOT_SET(HttpStatus.CONFLICT, "비밀번호가 설정되어 있지 않은 계정입니다."),
     SAME_PASSWORD_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "새 비밀번호는 현재 비밀번호와 달라야 합니다."),
+    ACTIVE_RENTAL_EXISTS(HttpStatus.CONFLICT, "진행 중인 대여 거래가 있어 탈퇴할 수 없습니다."),
     USER_SUSPENDED(HttpStatus.FORBIDDEN, "이용이 정지된 회원입니다."),
     USER_DELETED(HttpStatus.FORBIDDEN, "탈퇴한 회원입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."),

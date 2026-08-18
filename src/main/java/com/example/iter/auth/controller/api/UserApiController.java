@@ -2,19 +2,23 @@ package com.example.iter.auth.controller.api;
 
 import com.example.iter.auth.dto.request.AddressUpdateRequest;
 import com.example.iter.auth.dto.request.PasswordChangeRequest;
+import com.example.iter.auth.dto.request.UserDeleteRequest;
 import com.example.iter.auth.dto.request.UserUpdateRequest;
 import com.example.iter.auth.dto.response.AddressResponse;
 import com.example.iter.auth.dto.response.UserResponse;
 import com.example.iter.auth.service.UserAccountService;
 import com.example.iter.auth.service.UserAddressService;
+import com.example.iter.auth.support.RefreshTokenCookieManager;
 import com.example.iter.common.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -31,6 +35,7 @@ public class UserApiController {
 
     private final UserAddressService userAddressService;
     private final UserAccountService userAccountService;
+    private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @Operation(summary = "내 정보 조회")
     @GetMapping("/me")
@@ -79,5 +84,20 @@ public class UserApiController {
         return ResponseEntity.ok(
                 userAddressService.updateDefaultAddress(principal.getUser().getId(), request)
         );
+    }
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "진행 중인 대여가 없을 때 회원과 소유 장비를 소프트 삭제하고 모든 Refresh Token을 폐기합니다."
+    )
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody(required = false) UserDeleteRequest request
+    ) {
+        userAccountService.withdraw(principal.getUser().getId(), request);
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieManager.delete().toString())
+                .build();
     }
 }

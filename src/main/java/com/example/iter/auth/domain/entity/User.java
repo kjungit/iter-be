@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 // ERD USER 엔티티
 // id, email(UK), password, name, nickname, phone, role, status, created_at, updated_at
@@ -52,6 +53,9 @@ public class User extends BaseTimeEntity {
     @Column(name = "point_balance", nullable = false, precision = 12, scale = 0)
     private BigDecimal pointBalance = BigDecimal.ZERO;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // ===== 도메인 메서드 =====
 
     public void changePassword(String encodedPassword) {
@@ -73,7 +77,12 @@ public class User extends BaseTimeEntity {
     }
 
     public void withdraw() {
+        withdraw(LocalDateTime.now());
+    }
+
+    public void withdraw(LocalDateTime deletedAt) {
         this.status = UserStatus.DELETED;
+        this.deletedAt = deletedAt;
     }
 
     public boolean isActive() {
