@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -93,8 +94,9 @@ public class AuthApiController {
     }
 
     @Operation(summary = "CSRF Token 발급", description = "Refresh Token Cookie를 사용하는 인증 요청용 CSRF Token을 발급합니다.")
+    @ApiResponse(responseCode = "204", description = "CSRF Token Cookie 발급 완료")
     @GetMapping("/csrf")
-    public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
+    public ResponseEntity<Void> csrf(@Parameter(hidden = true) CsrfToken csrfToken) {
         csrfToken.getToken();
         return ResponseEntity.noContent().build();
     }

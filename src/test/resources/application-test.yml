@@ -8,6 +8,13 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: test-kakao-client-id
+            client-secret: test-kakao-client-secret
 
 jwt:
   issuer: iter

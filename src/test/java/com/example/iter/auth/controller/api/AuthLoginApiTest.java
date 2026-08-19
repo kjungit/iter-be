@@ -96,6 +96,15 @@ class AuthLoginApiTest {
         assertThat(refreshTokenRepository.count()).isZero();
     }
 
+    @Test
+    void unsupportedContentTypeReturnsUnsupportedMediaType() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("{}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
     private String loginRequest(String email, String password) {
         return """
                 {"email":"%s","password":"%s"}

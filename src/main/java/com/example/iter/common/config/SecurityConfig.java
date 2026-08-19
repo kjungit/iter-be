@@ -3,11 +3,15 @@ package com.example.iter.common.config;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.response.ErrorResponse;
 import com.example.iter.common.security.JwtAuthenticationFilter;
+import com.example.iter.auth.support.KakaoOAuth2FailureHandler;
+import com.example.iter.auth.support.KakaoOAuth2SuccessHandler;
+import com.example.iter.auth.support.NoOpOAuth2AuthorizedClientRepository;
 import tools.jackson.databind.json.JsonMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -21,6 +25,7 @@ import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -45,6 +50,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JsonMapper jsonMapper;
     private final CorsProperties corsProperties;
+    private final KakaoOAuth2SuccessHandler kakaoOAuth2SuccessHandler;
+    private final KakaoOAuth2FailureHandler kakaoOAuth2FailureHandler;
+    private final NoOpOAuth2AuthorizedClientRepository noOpOAuth2AuthorizedClientRepository;
 
     // 인증 없이 접근 가능한 경로.
     private static final String[] PERMIT_ALL_PATHS = {
@@ -52,6 +60,8 @@ public class SecurityConfig {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/csrf",
+            "/api/v1/auth/oauth2/kakao/exchange",
+            "/api/v1/auth/oauth2/kakao/signup",
 
             "/swagger-ui/**",
             "/swagger-ui.html",
@@ -61,6 +71,26 @@ public class SecurityConfig {
     };
 
     @Bean
+    @Order(1)
+    public SecurityFilterChain oauth2FilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/oauth2/**", "/login/oauth2/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .securityContext(context -> context
+                        .securityContextRepository(new NullSecurityContextRepository()))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizedClientRepository(noOpOAuth2AuthorizedClientRepository)
+                        .successHandler(kakaoOAuth2SuccessHandler)
+                        .failureHandler(kakaoOAuth2FailureHandler));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 
@@ -70,7 +100,15 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .requireCsrfProtectionMatcher(new OrRequestMatcher(
                                 PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/refresh"),
-                                PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/logout")
+                                PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/logout"),
+                                PathPatternRequestMatcher.pathPattern(
+                                        HttpMethod.POST,
+                                        "/api/v1/auth/oauth2/kakao/exchange"
+                                ),
+                                PathPatternRequestMatcher.pathPattern(
+                                        HttpMethod.POST,
+                                        "/api/v1/auth/oauth2/kakao/signup"
+                                )
                         )))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .formLogin(AbstractHttpConfigurer::disable)
