@@ -23,3 +23,12 @@ auth:
   refresh-cookie:
     name: iter-refresh
     secure: false
+
+app:
+  storage:
+    s3:
+      bucket: iter-nbe1113-team04-equipment
+      region: ap-northeast-2
+      public-base-url: https://iter-nbe1113-team04-equipment.s3.ap-northeast-2.amazonaws.com
+      key-prefix: equipment
+      presigned-url-validity: 5m

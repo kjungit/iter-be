@@ -104,7 +104,7 @@ class EquipmentManagementApiTest {
                 .thenAnswer(invocation -> {
                     Long equipmentId = invocation.getArgument(0);
                     ValidatedUpload upload = invocation.getArgument(1);
-                    String finalKey = "equipment/%d/%s".formatted(
+                    String finalKey = "equipment/public/%d/%s".formatted(
                             equipmentId,
                             upload.objectKey().substring(upload.objectKey().lastIndexOf('/') + 1));
                     return new StoredImage(
@@ -197,7 +197,7 @@ class EquipmentManagementApiTest {
         var images = equipmentImageRepository.findByEquipmentIdOrderBySortOrderAsc(equipment.getId());
         assertThat(images).hasSize(2);
         assertThat(images).allMatch(image -> image.getObjectKey().startsWith(
-                "equipment/%d/".formatted(equipment.getId())));
+                "equipment/public/%d/".formatted(equipment.getId())));
         assertThat(imageUploadRepository.findAll()).allMatch(EquipmentImageUpload::isUsed);
         keys.forEach(key -> verify(imageStorage).delete(key));
     }
@@ -232,8 +232,8 @@ class EquipmentManagementApiTest {
                 savePendingUpload(owner, "first.jpg").getObjectKey(),
                 savePendingUpload(owner, "second.jpg").getObjectKey());
         StoredImage firstImage = new StoredImage(
-                "equipment/1/first.jpg",
-                "https://cdn.example.com/equipment/1/first.jpg");
+                "equipment/public/1/first.jpg",
+                "https://cdn.example.com/equipment/public/1/first.jpg");
         doReturn(firstImage)
                 .doThrow(new CustomException(ErrorCode.IMAGE_UPLOAD_FAILED))
                 .when(imageStorage).promote(anyLong(), any());
@@ -351,7 +351,7 @@ class EquipmentManagementApiTest {
     void 장비에_이미지를_추가하면_기존_대표_이미지와_정렬_순서를_유지한다() throws Exception {
         User owner = saveUser("add-image-owner@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
-        EquipmentImage thumbnail = saveImage(equipment, "equipment/%d/original.jpg"
+        EquipmentImage thumbnail = saveImage(equipment, "equipment/public/%d/original.jpg"
                 .formatted(equipment.getId()), 0, true);
         String newKey = savePendingUpload(owner, "added.jpg").getObjectKey();
 
@@ -377,7 +377,7 @@ class EquipmentManagementApiTest {
         User owner = saveUser("new-thumbnail@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
         EquipmentImage oldThumbnail = saveImage(
-                equipment, "equipment/%d/old.jpg".formatted(equipment.getId()), 0, true);
+                equipment, "equipment/public/%d/old.jpg".formatted(equipment.getId()), 0, true);
         String newKey = savePendingUpload(owner, "new.jpg").getObjectKey();
 
         mockMvc.perform(post("/api/v1/devices/{equipmentId}/images", equipment.getId())
@@ -399,7 +399,7 @@ class EquipmentManagementApiTest {
         User owner = saveUser("image-limit@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
         for (int index = 0; index < 5; index++) {
-            saveImage(equipment, "equipment/%d/%d.jpg".formatted(equipment.getId(), index),
+            saveImage(equipment, "equipment/public/%d/%d.jpg".formatted(equipment.getId(), index),
                     index, index == 0);
         }
         String newKey = savePendingUpload(owner, "overflow.jpg").getObjectKey();
@@ -422,9 +422,9 @@ class EquipmentManagementApiTest {
         User owner = saveUser("delete-image@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
         EquipmentImage thumbnail = saveImage(
-                equipment, "equipment/%d/thumbnail.jpg".formatted(equipment.getId()), 0, true);
+                equipment, "equipment/public/%d/thumbnail.jpg".formatted(equipment.getId()), 0, true);
         EquipmentImage remaining = saveImage(
-                equipment, "equipment/%d/remaining.jpg".formatted(equipment.getId()), 1, false);
+                equipment, "equipment/public/%d/remaining.jpg".formatted(equipment.getId()), 1, false);
 
         mockMvc.perform(delete("/api/v1/devices/{equipmentId}/images/{imageId}",
                         equipment.getId(), thumbnail.getId())
@@ -442,7 +442,7 @@ class EquipmentManagementApiTest {
         User owner = saveUser("minimum-image@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
         EquipmentImage image = saveImage(
-                equipment, "equipment/%d/only.jpg".formatted(equipment.getId()), 0, true);
+                equipment, "equipment/public/%d/only.jpg".formatted(equipment.getId()), 0, true);
 
         mockMvc.perform(delete("/api/v1/devices/{equipmentId}/images/{imageId}",
                         equipment.getId(), image.getId())

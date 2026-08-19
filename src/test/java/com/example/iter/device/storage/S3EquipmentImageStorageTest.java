@@ -121,7 +121,7 @@ class S3EquipmentImageStorageTest {
         CopyObjectRequest request = requestCaptor.getValue();
         assertThat(request.copySourceIfMatch()).isEqualTo("etag-1");
         assertThat(request.destinationKey())
-                .startsWith("equipment/7/")
+                .startsWith("equipment/public/7/")
                 .endsWith(".jpg");
         assertThat(request.cacheControl())
                 .isEqualTo("public, max-age=31536000, immutable");
@@ -147,12 +147,12 @@ class S3EquipmentImageStorageTest {
 
     @Test
     void 저장된_객체_키로_S3_이미지를_삭제한다() {
-        storage.delete("equipment/42/image.jpg");
+        storage.delete("equipment/public/42/image.jpg");
 
         ArgumentCaptor<DeleteObjectRequest> requestCaptor =
                 ArgumentCaptor.forClass(DeleteObjectRequest.class);
         verify(s3Client).deleteObject(requestCaptor.capture());
         assertThat(requestCaptor.getValue().bucket()).isEqualTo("iter-test");
-        assertThat(requestCaptor.getValue().key()).isEqualTo("equipment/42/image.jpg");
+        assertThat(requestCaptor.getValue().key()).isEqualTo("equipment/public/42/image.jpg");
     }
 }

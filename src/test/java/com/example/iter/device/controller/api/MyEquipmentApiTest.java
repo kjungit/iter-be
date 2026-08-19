@@ -51,7 +51,7 @@ class MyEquipmentApiTest {
         Equipment cheap = saveEquipment(owner, "저가 비공개 장비", 20_000, EquipmentStatus.INACTIVE);
         saveEquipment(owner, "공개 장비", 10_000, EquipmentStatus.ACTIVE);
         saveEquipment(other, "다른 회원 장비", 1_000, EquipmentStatus.INACTIVE);
-        saveThumbnail(cheap, "equipment/%d/thumbnail.jpg".formatted(cheap.getId()));
+        saveThumbnail(cheap, "equipment/public/%d/thumbnail.jpg".formatted(cheap.getId()));
 
         mockMvc.perform(get("/api/v1/users/me/devices")
                         .queryParam("status", "INACTIVE")
@@ -61,7 +61,7 @@ class MyEquipmentApiTest {
                 .andExpect(jsonPath("$.content.length()").value(2))
                 .andExpect(jsonPath("$.content[0].id").value(cheap.getId()))
                 .andExpect(jsonPath("$.content[0].thumbnailUrl")
-                        .value(endsWith("equipment/%d/thumbnail.jpg".formatted(cheap.getId()))))
+                        .value(endsWith("equipment/public/%d/thumbnail.jpg".formatted(cheap.getId()))))
                 .andExpect(jsonPath("$.content[1].id").value(expensive.getId()))
                 .andExpect(jsonPath("$.content[0].status").value("INACTIVE"))
                 .andExpect(jsonPath("$.page").value(0))

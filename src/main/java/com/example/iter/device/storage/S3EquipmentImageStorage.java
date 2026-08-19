@@ -128,7 +128,7 @@ public class S3EquipmentImageStorage implements EquipmentImageStorage {
 
     @Override
     public StoredImage promote(Long equipmentId, ValidatedUpload upload) {
-        String finalObjectKey = "%s/%d/%s.%s".formatted(
+        String finalObjectKey = "%s/public/%d/%s.%s".formatted(
                 normalizedPrefix(),
                 equipmentId,
                 UUID.randomUUID(),

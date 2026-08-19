@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ITer equipment image bucket, public delivery policy, and backend IAM policy
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Globally unique S3 bucket name
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Description: Exact frontend origins allowed to upload through Presigned PUT URLs
+  KeyPrefix:
+    Type: String
+    Default: equipment
+    AllowedPattern: "^[A-Za-z0-9!_.*'()/-]+$"
+
+Resources:
+  EquipmentImageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - Id: PresignedEquipmentImageUpload
+            AllowedOrigins: !Ref AllowedOrigins
+            AllowedMethods:
+              - PUT
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - content-type
+              - x-amz-*
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAbandonedTemporaryUploads
+            Status: Enabled
+            Prefix: !Sub "${KeyPrefix}/temp/"
+            ExpirationInDays: 1
+      Tags:
+        - Key: Project
+          Value: ITer
+        - Key: Purpose
+          Value: EquipmentImages
+
+  EquipmentImageBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EquipmentImageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt EquipmentImageBucket.Arn
+              - !Sub "${EquipmentImageBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+          - Sid: AllowPublicReadForPromotedImagesOnly
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${EquipmentImageBucket.Arn}/${KeyPrefix}/public/*"
+
+  EquipmentImageBackendPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Minimum permissions for ITer Presigned image upload and promotion
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: IssueAndValidateTemporaryUploads
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+            Resource: !Sub "${EquipmentImageBucket.Arn}/${KeyPrefix}/temp/*"
+          - Sid: PromoteAndDeleteFinalImages
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: !Sub "${EquipmentImageBucket.Arn}/${KeyPrefix}/public/*"
+
+Outputs:
+  BucketName:
+    Value: !Ref EquipmentImageBucket
+  BucketRegionalDomainName:
+    Value: !GetAtt EquipmentImageBucket.RegionalDomainName
+  PublicBaseUrl:
+    Value: !Sub "https://${EquipmentImageBucket.RegionalDomainName}"
+  BackendPolicyArn:
+    Value: !Ref EquipmentImageBackendPolicy
+  TemporaryPrefix:
+    Value: !Sub "${KeyPrefix}/temp/"
+  PublicPrefix:
+    Value: !Sub "${KeyPrefix}/public/"
