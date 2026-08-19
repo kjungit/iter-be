@@ -4,14 +4,17 @@ import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.dto.request.EquipmentCreateRequest;
 import com.example.iter.device.dto.request.EquipmentImageCreateRequest;
 import com.example.iter.device.dto.request.EquipmentStatusUpdateRequest;
+import com.example.iter.device.dto.request.EquipmentScheduleRequest;
 import com.example.iter.device.dto.request.EquipmentUpdateRequest;
 import com.example.iter.device.dto.request.PresignedImageUploadRequest;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
 import com.example.iter.device.dto.response.EquipmentImageResponse;
 import com.example.iter.device.dto.response.EquipmentStatusResponse;
+import com.example.iter.device.dto.response.EquipmentScheduleResponse;
 import com.example.iter.device.dto.response.PresignedImageUploadResponse;
 import com.example.iter.device.service.EquipmentImageUploadService;
 import com.example.iter.device.service.EquipmentManagementService;
+import com.example.iter.device.service.EquipmentQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +30,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.util.List;
 
@@ -39,6 +44,7 @@ public class EquipmentManagementApiController {
 
     private final EquipmentManagementService equipmentManagementService;
     private final EquipmentImageUploadService equipmentImageUploadService;
+    private final EquipmentQueryService equipmentQueryService;
 
     @Operation(summary = "장비 이미지 업로드 URL 발급",
             description = "S3에 이미지를 직접 업로드할 수 있는 5분 만료 Presigned PUT URL을 발급합니다.")
@@ -119,5 +125,17 @@ public class EquipmentManagementApiController {
         equipmentManagementService.deleteImage(
                 principal.getUser().getId(), equipmentId, imageId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "장비 예약 일정 조회",
+            description = "장비 소유자 또는 관리자가 조회 기간과 겹치는 확정 예약 일정을 조회합니다.")
+    @GetMapping("/{equipmentId}/rentals")
+    public ResponseEntity<EquipmentScheduleResponse> getSchedule(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long equipmentId,
+            @Valid @ModelAttribute EquipmentScheduleRequest request
+    ) {
+        return ResponseEntity.ok(equipmentQueryService.getEquipmentSchedule(
+                principal.getUser(), equipmentId, request));
     }
 }

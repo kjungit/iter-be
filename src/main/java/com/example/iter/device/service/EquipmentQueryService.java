@@ -1,6 +1,8 @@
 package com.example.iter.device.service;
 
 import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.auth.domain.entity.Role;
+import com.example.iter.auth.domain.entity.User;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
@@ -11,6 +13,7 @@ import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
 import com.example.iter.device.dto.request.MyEquipmentSearchRequest;
+import com.example.iter.device.dto.request.EquipmentScheduleRequest;
 import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.device.dto.response.AvailabilityReason;
 import com.example.iter.device.dto.response.EquipmentAvailabilityResponse;
@@ -21,6 +24,8 @@ import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.dto.response.EquipmentOwnerResponse;
 import com.example.iter.device.dto.response.EquipmentSummaryResponse;
 import com.example.iter.device.dto.response.MyEquipmentSummaryResponse;
+import com.example.iter.device.dto.response.EquipmentScheduleResponse;
+import com.example.iter.device.dto.response.RentalScheduleItemResponse;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.device.support.EquipmentImageUrlResolver;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
@@ -204,6 +209,31 @@ public class EquipmentQueryService {
             );
         });
         return PageResponse.from(responsePage);
+    }
+
+    public EquipmentScheduleResponse getEquipmentSchedule(
+            User requester,
+            Long equipmentId,
+            EquipmentScheduleRequest request
+    ) {
+        Equipment equipment = equipmentRepository.findById(equipmentId)
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.EQUIPMENT_NOT_FOUND, "존재하지 않는 장비입니다."));
+        if (!equipment.isOwnedBy(requester.getId()) && requester.getRole() != Role.ADMIN) {
+            throw new CustomException(
+                    ErrorCode.FORBIDDEN, "본인 소유 장비의 예약 일정만 조회할 수 있습니다.");
+        }
+
+        List<RentalScheduleItemResponse> rentals = rentalRepository.findEquipmentSchedule(
+                        equipmentId,
+                        request.from(),
+                        request.to(),
+                        RentalConflictPolicy.nonOccupyingStatuses())
+                .stream()
+                .map(RentalScheduleItemResponse::from)
+                .toList();
+        return new EquipmentScheduleResponse(
+                equipmentId, request.from(), request.to(), rentals);
     }
 
     private Map<Long, String> findThumbnailUrls(List<EquipmentSearchRow> rows) {

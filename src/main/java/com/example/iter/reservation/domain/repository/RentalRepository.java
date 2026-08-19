@@ -133,4 +133,20 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
     );
 
+    @Query("""
+            select r
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and r.startDate <= :to
+              and r.endDate >= :from
+            order by r.startDate asc, r.endDate asc, r.id asc
+            """)
+    List<Rental> findEquipmentSchedule(
+            @Param("equipmentId") Long equipmentId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+    );
+
 }
