@@ -4,6 +4,7 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.payment.domain.entity.Payment;
 import com.example.iter.payment.domain.entity.PaymentStatus;
@@ -53,7 +54,7 @@ class RentalApprovalConcurrencyTest {
         User owner = userRepository.save(user("owner-" + System.nanoTime()));
         Equipment equipment = equipmentRepository.save(Equipment.builder()
                 .ownerId(owner.getId())
-                .category("카메라")
+                .category(EquipmentCategory.CAMERA)
                 .name("소니 A7C2")
                 .dailyPrice(BigDecimal.valueOf(30000))
                 .build());
@@ -70,7 +71,7 @@ class RentalApprovalConcurrencyTest {
                         .startDate(LocalDate.now().plusDays(10))
                         .endDate(LocalDate.now().plusDays(15))
                         .productNameSnapshot(equipment.getName())
-                        .categorySnapshot(equipment.getCategory())
+                        .categorySnapshot(equipment.getCategory().name())
                         .dailyPriceSnapshot(equipment.getDailyPrice())
                         .rentalDays(6)
                         .totalPrice(totalPrice)
