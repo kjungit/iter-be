@@ -14,6 +14,7 @@ import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentImageUploadRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.device.dto.request.EquipmentCreateRequest;
+import com.example.iter.device.dto.request.EquipmentImageCreateRequest;
 import com.example.iter.device.dto.request.EquipmentStatusUpdateRequest;
 import com.example.iter.device.dto.request.EquipmentUpdateRequest;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
@@ -86,6 +87,7 @@ public class EquipmentManagementService {
                 .build());
 
         List<StoredImage> storedImages = promoteAll(equipment.getId(), validatedUploads);
+        registerStorageSynchronization(storedImages, request.imageKeys());
         LocalDateTime usedAt = LocalDateTime.now();
         uploadRecords.forEach(upload -> upload.use(usedAt));
 
@@ -101,8 +103,89 @@ public class EquipmentManagementService {
         }
 
         equipmentImageRepository.flush();
-        registerStorageSynchronization(storedImages, request.imageKeys());
         return toDetailResponse(equipment.getId());
+    }
+
+    @Transactional
+    public List<EquipmentImageResponse> addImages(
+            User owner,
+            Long equipmentId,
+            EquipmentImageCreateRequest request
+    ) {
+        validateCanCreate(owner);
+        Equipment equipment = findOwnedForUpdate(
+                equipmentId, owner.getId(), "본인 소유의 장비에만 이미지를 추가할 수 있습니다.");
+        List<EquipmentImage> existingImages = equipmentImageRepository
+                .findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId);
+        if (existingImages.size() + request.imageKeys().size() > EquipmentImagePolicy.MAX_IMAGE_COUNT) {
+            throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
+        }
+
+        List<EquipmentImageUpload> uploadRecords = findAndValidateUploadRecords(
+                owner.getId(), request.imageKeys());
+        List<ValidatedUpload> validatedUploads = uploadRecords.stream()
+                .map(upload -> imageStorage.validateTemporaryUpload(
+                        upload.getObjectKey(),
+                        upload.getExpectedContentType(),
+                        upload.getExpectedSize()))
+                .toList();
+        List<StoredImage> storedImages = promoteAll(equipmentId, validatedUploads);
+        registerStorageSynchronization(storedImages, request.imageKeys());
+
+        if (request.thumbnailIndex() != null) {
+            existingImages.forEach(image -> image.changeThumbnail(false));
+        }
+        int nextSortOrder = existingImages.stream()
+                .mapToInt(EquipmentImage::getSortOrder)
+                .max()
+                .orElse(-1) + 1;
+        for (int index = 0; index < storedImages.size(); index++) {
+            StoredImage storedImage = storedImages.get(index);
+            equipmentImageRepository.save(EquipmentImage.builder()
+                    .equipment(equipment)
+                    .imageUrl(storedImage.imageUrl())
+                    .objectKey(storedImage.objectKey())
+                    .sortOrder(nextSortOrder + index)
+                    .thumbnail(request.thumbnailIndex() != null
+                            && index == request.thumbnailIndex())
+                    .build());
+        }
+        LocalDateTime usedAt = LocalDateTime.now();
+        uploadRecords.forEach(upload -> upload.use(usedAt));
+        equipmentImageRepository.flush();
+
+        return equipmentImageRepository.findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId)
+                .stream()
+                .map(image -> EquipmentImageResponse.from(image, imageUrlResolver.resolve(image)))
+                .toList();
+    }
+
+    @Transactional
+    public void deleteImage(Long ownerId, Long equipmentId, Long imageId) {
+        findOwnedForUpdate(
+                equipmentId, ownerId, "본인 소유의 장비 이미지만 삭제할 수 있습니다.");
+        List<EquipmentImage> images = equipmentImageRepository
+                .findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId);
+        EquipmentImage target = images.stream()
+                .filter(image -> image.getId().equals(imageId))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_IMAGE_NOT_FOUND));
+        if (images.size() <= EquipmentImagePolicy.MIN_IMAGE_COUNT) {
+            throw new CustomException(ErrorCode.MINIMUM_IMAGE_REQUIRED);
+        }
+
+        List<EquipmentImage> remainingImages = images.stream()
+                .filter(image -> !image.getId().equals(imageId))
+                .toList();
+        if (target.isThumbnail()) {
+            remainingImages.getFirst().changeThumbnail(true);
+        }
+        for (int index = 0; index < remainingImages.size(); index++) {
+            remainingImages.get(index).changeSortOrder(index);
+        }
+        equipmentImageRepository.delete(target);
+        equipmentImageRepository.flush();
+        registerDeleteAfterCommit(target.getObjectKey());
     }
 
     @Transactional
@@ -355,6 +438,18 @@ public class EquipmentManagementService {
                 }
                 storedImages.forEach(image -> deleteQuietly(
                         image.objectKey(), "롤백된 최종 장비 이미지 삭제 실패"));
+            }
+        });
+    }
+
+    private void registerDeleteAfterCommit(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteQuietly(objectKey, "삭제된 장비 이미지 객체 정리 실패");
             }
         });
     }

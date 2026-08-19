@@ -2,10 +2,12 @@ package com.example.iter.device.controller.api;
 
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.dto.request.EquipmentCreateRequest;
+import com.example.iter.device.dto.request.EquipmentImageCreateRequest;
 import com.example.iter.device.dto.request.EquipmentStatusUpdateRequest;
 import com.example.iter.device.dto.request.EquipmentUpdateRequest;
 import com.example.iter.device.dto.request.PresignedImageUploadRequest;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
+import com.example.iter.device.dto.response.EquipmentImageResponse;
 import com.example.iter.device.dto.response.EquipmentStatusResponse;
 import com.example.iter.device.dto.response.PresignedImageUploadResponse;
 import com.example.iter.device.service.EquipmentImageUploadService;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "Equipment Management", description = "장비 등록·수정·삭제·공개 상태 관리 API")
 @RestController
@@ -89,5 +93,31 @@ public class EquipmentManagementApiController {
     ) {
         return ResponseEntity.ok(equipmentManagementService.updateStatus(
                 principal.getUser(), equipmentId, request));
+    }
+
+    @Operation(summary = "장비 이미지 등록",
+            description = "Presigned URL로 업로드한 이미지를 기존 장비에 추가합니다. 기존 이미지와 합쳐 최대 5장까지 등록할 수 있습니다.")
+    @PostMapping("/{equipmentId}/images")
+    public ResponseEntity<List<EquipmentImageResponse>> addImages(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long equipmentId,
+            @Valid @RequestBody EquipmentImageCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                equipmentManagementService.addImages(
+                        principal.getUser(), equipmentId, request));
+    }
+
+    @Operation(summary = "장비 이미지 삭제",
+            description = "장비에는 최소 한 장의 이미지를 유지합니다. 대표 이미지를 삭제하면 다음 순서의 이미지가 대표 이미지가 됩니다.")
+    @DeleteMapping("/{equipmentId}/images/{imageId}")
+    public ResponseEntity<Void> deleteImage(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long equipmentId,
+            @PathVariable Long imageId
+    ) {
+        equipmentManagementService.deleteImage(
+                principal.getUser().getId(), equipmentId, imageId);
+        return ResponseEntity.noContent().build();
     }
 }

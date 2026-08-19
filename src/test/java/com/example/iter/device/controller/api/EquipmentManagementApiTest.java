@@ -9,6 +9,7 @@ import com.example.iter.common.security.JwtTokenProvider;
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImageUpload;
+import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
@@ -347,6 +348,112 @@ class EquipmentManagementApiTest {
     }
 
     @Test
+    void 장비에_이미지를_추가하면_기존_대표_이미지와_정렬_순서를_유지한다() throws Exception {
+        User owner = saveUser("add-image-owner@example.com", UserStatus.ACTIVE);
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        EquipmentImage thumbnail = saveImage(equipment, "equipment/%d/original.jpg"
+                .formatted(equipment.getId()), 0, true);
+        String newKey = savePendingUpload(owner, "added.jpg").getObjectKey();
+
+        mockMvc.perform(post("/api/v1/devices/{equipmentId}/images", equipment.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"imageKeys":["%s"]}
+                                """.formatted(newKey))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(thumbnail.getId()))
+                .andExpect(jsonPath("$[0].thumbnail").value(true))
+                .andExpect(jsonPath("$[1].sortOrder").value(1))
+                .andExpect(jsonPath("$[1].thumbnail").value(false));
+
+        assertThat(imageUploadRepository.findAll()).allMatch(EquipmentImageUpload::isUsed);
+        verify(imageStorage).delete(newKey);
+    }
+
+    @Test
+    void 추가한_이미지를_대표로_지정하면_기존_대표_이미지를_해제한다() throws Exception {
+        User owner = saveUser("new-thumbnail@example.com", UserStatus.ACTIVE);
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        EquipmentImage oldThumbnail = saveImage(
+                equipment, "equipment/%d/old.jpg".formatted(equipment.getId()), 0, true);
+        String newKey = savePendingUpload(owner, "new.jpg").getObjectKey();
+
+        mockMvc.perform(post("/api/v1/devices/{equipmentId}/images", equipment.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"imageKeys":["%s"],"thumbnailIndex":0}
+                                """.formatted(newKey))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$[0].thumbnail").value(false))
+                .andExpect(jsonPath("$[1].thumbnail").value(true));
+
+        assertThat(equipmentImageRepository.findById(oldThumbnail.getId()).orElseThrow()
+                .isThumbnail()).isFalse();
+    }
+
+    @Test
+    void 기존_이미지와_합쳐_5장을_초과하면_추가할_수_없다() throws Exception {
+        User owner = saveUser("image-limit@example.com", UserStatus.ACTIVE);
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        for (int index = 0; index < 5; index++) {
+            saveImage(equipment, "equipment/%d/%d.jpg".formatted(equipment.getId(), index),
+                    index, index == 0);
+        }
+        String newKey = savePendingUpload(owner, "overflow.jpg").getObjectKey();
+
+        mockMvc.perform(post("/api/v1/devices/{equipmentId}/images", equipment.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"imageKeys":["%s"]}
+                                """.formatted(newKey))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IMAGE_LIMIT_EXCEEDED"));
+
+        assertThat(equipmentImageRepository.count()).isEqualTo(5);
+        assertThat(imageUploadRepository.findAll()).noneMatch(EquipmentImageUpload::isUsed);
+    }
+
+    @Test
+    void 대표_이미지를_삭제하면_다음_이미지를_대표로_지정하고_S3_객체를_삭제한다() throws Exception {
+        User owner = saveUser("delete-image@example.com", UserStatus.ACTIVE);
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        EquipmentImage thumbnail = saveImage(
+                equipment, "equipment/%d/thumbnail.jpg".formatted(equipment.getId()), 0, true);
+        EquipmentImage remaining = saveImage(
+                equipment, "equipment/%d/remaining.jpg".formatted(equipment.getId()), 1, false);
+
+        mockMvc.perform(delete("/api/v1/devices/{equipmentId}/images/{imageId}",
+                        equipment.getId(), thumbnail.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isNoContent());
+
+        EquipmentImage updated = equipmentImageRepository.findById(remaining.getId()).orElseThrow();
+        assertThat(updated.isThumbnail()).isTrue();
+        assertThat(updated.getSortOrder()).isZero();
+        verify(imageStorage).delete(thumbnail.getObjectKey());
+    }
+
+    @Test
+    void 장비의_마지막_이미지는_삭제할_수_없다() throws Exception {
+        User owner = saveUser("minimum-image@example.com", UserStatus.ACTIVE);
+        Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
+        EquipmentImage image = saveImage(
+                equipment, "equipment/%d/only.jpg".formatted(equipment.getId()), 0, true);
+
+        mockMvc.perform(delete("/api/v1/devices/{equipmentId}/images/{imageId}",
+                        equipment.getId(), image.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MINIMUM_IMAGE_REQUIRED"));
+
+        assertThat(equipmentImageRepository.findById(image.getId())).isPresent();
+    }
+
+    @Test
     void 전달한_필드만_수정하고_카테고리는_유지한다() throws Exception {
         User owner = saveUser("update-owner@example.com", UserStatus.ACTIVE);
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
@@ -504,6 +611,21 @@ class EquipmentManagementApiTest {
                 .availableTo(LocalDate.now().plusMonths(2))
                 .status(status)
                 .productCondition(ProductConditionType.NORMAL)
+                .build());
+    }
+
+    private EquipmentImage saveImage(
+            Equipment equipment,
+            String objectKey,
+            int sortOrder,
+            boolean thumbnail
+    ) {
+        return equipmentImageRepository.saveAndFlush(EquipmentImage.builder()
+                .equipment(equipment)
+                .imageUrl("https://cdn.example.com/" + objectKey)
+                .objectKey(objectKey)
+                .sortOrder(sortOrder)
+                .thumbnail(thumbnail)
                 .build());
     }
 

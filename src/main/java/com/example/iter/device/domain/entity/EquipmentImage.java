@@ -33,4 +33,12 @@ public class EquipmentImage extends BaseCreatedAtEntity {
     @Column(name = "is_thumbnail")
     @Builder.Default
     private boolean thumbnail = false;
+
+    public void changeThumbnail(boolean thumbnail) {
+        this.thumbnail = thumbnail;
+    }
+
+    public void changeSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }
