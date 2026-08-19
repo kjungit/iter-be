@@ -16,6 +16,7 @@ import com.example.iter.device.service.EquipmentImageUploadService;
 import com.example.iter.device.service.EquipmentManagementService;
 import com.example.iter.device.service.EquipmentQueryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -59,6 +60,7 @@ public class EquipmentManagementApiController {
 
     @Operation(summary = "장비 등록",
             description = "Presigned URL로 업로드한 이미지 객체 키와 장비 정보를 등록합니다.")
+    @ApiResponse(responseCode = "201", description = "장비 등록 성공")
     @PostMapping
     public ResponseEntity<EquipmentDetailResponse> create(
             @AuthenticationPrincipal CustomUserDetails principal,
@@ -81,6 +83,7 @@ public class EquipmentManagementApiController {
     }
 
     @Operation(summary = "장비 삭제", description = "진행 중 거래와 분쟁이 없는 장비를 소프트 삭제합니다.")
+    @ApiResponse(responseCode = "204", description = "장비 삭제 성공")
     @DeleteMapping("/{equipmentId}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal CustomUserDetails principal,
@@ -103,6 +106,7 @@ public class EquipmentManagementApiController {
 
     @Operation(summary = "장비 이미지 등록",
             description = "Presigned URL로 업로드한 이미지를 기존 장비에 추가합니다. 기존 이미지와 합쳐 최대 5장까지 등록할 수 있습니다.")
+    @ApiResponse(responseCode = "201", description = "장비 이미지 등록 성공")
     @PostMapping("/{equipmentId}/images")
     public ResponseEntity<List<EquipmentImageResponse>> addImages(
             @AuthenticationPrincipal CustomUserDetails principal,
@@ -116,6 +120,7 @@ public class EquipmentManagementApiController {
 
     @Operation(summary = "장비 이미지 삭제",
             description = "장비에는 최소 한 장의 이미지를 유지합니다. 대표 이미지를 삭제하면 다음 순서의 이미지가 대표 이미지가 됩니다.")
+    @ApiResponse(responseCode = "204", description = "장비 이미지 삭제 성공")
     @DeleteMapping("/{equipmentId}/images/{imageId}")
     public ResponseEntity<Void> deleteImage(
             @AuthenticationPrincipal CustomUserDetails principal,
