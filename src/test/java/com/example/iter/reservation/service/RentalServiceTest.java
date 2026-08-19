@@ -84,7 +84,7 @@ class RentalServiceTest {
 
     @Test
     void 대여_요청_생성시_일수와_총액을_계산한다() {
-        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -96,7 +96,7 @@ class RentalServiceTest {
 
     @Test
     void 본인_장비는_대여할_수_없다() {
-        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(2L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(2L)));
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -106,7 +106,8 @@ class RentalServiceTest {
 
     @Test
     void ACTIVE_상태가_아닌_장비는_대여할_수_없다() {
-        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L, EquipmentStatus.MAINTENANCE)));
+        when(equipmentRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(equipment(99L, EquipmentStatus.MAINTENANCE)));
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -116,7 +117,7 @@ class RentalServiceTest {
 
     @Test
     void 시작일이_오늘이거나_과거면_요청할_수_없다() {
-        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         RentalCreateRequest todayRequest = new RentalCreateRequest(1L,
                 LocalDate.now(), LocalDate.now().plusDays(5),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
@@ -129,7 +130,7 @@ class RentalServiceTest {
 
     @Test
     void 겹치는_확정_예약이_있으면_요청할_수_없다() {
-        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))

@@ -112,4 +112,25 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
                                             );
 
+    boolean existsByEquipmentIdAndStatusIn(
+            Long equipmentId,
+            Collection<RentalStatus> statuses
+    );
+
+    boolean existsByEquipmentIdAndStatus(Long equipmentId, RentalStatus status);
+
+    @Query("""
+            select case when count(r.id) > 0 then true else false end
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and (r.startDate < :availableFrom or r.endDate > :availableTo)
+            """)
+    boolean existsOccupyingRentalOutsidePeriod(
+            @Param("equipmentId") Long equipmentId,
+            @Param("availableFrom") LocalDate availableFrom,
+            @Param("availableTo") LocalDate availableTo,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+    );
+
 }

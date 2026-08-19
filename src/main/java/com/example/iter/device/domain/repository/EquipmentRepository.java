@@ -37,6 +37,19 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
             """)
     Optional<EquipmentDetailRow> findPublicDetailById(@Param("equipmentId") Long equipmentId);
 
+    @Query("""
+            select new com.example.iter.device.service.model.EquipmentDetailRow(
+                e,
+                coalesce(avg(r.rating), 0.0),
+                count(r.id)
+            )
+            from Equipment e
+            left join Review r on r.equipment = e
+            where e.id = :equipmentId
+            group by e
+            """)
+    Optional<EquipmentDetailRow> findManagementDetailById(@Param("equipmentId") Long equipmentId);
+
     @Query(
             value = """
                     select new com.example.iter.device.service.model.EquipmentSearchRow(

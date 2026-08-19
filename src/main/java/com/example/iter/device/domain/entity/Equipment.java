@@ -69,4 +69,26 @@ public class Equipment extends BaseTimeEntity {
     public void changeStatus(EquipmentStatus status) {
         this.status = status;
     }
+
+    public void update(
+            String name,
+            String description,
+            BigDecimal dailyPrice,
+            LocalDate availableFrom,
+            LocalDate availableTo,
+            ProductConditionType productCondition,
+            String conditionDetail
+    ) {
+        this.name = name;
+        this.description = description;
+        this.dailyPrice = dailyPrice;
+        this.availableFrom = availableFrom;
+        this.availableTo = availableTo;
+        this.productCondition = productCondition;
+        this.conditionDetail = conditionDetail;
+    }
+
+    public void delete() {
+        this.status = EquipmentStatus.DELETED;
+    }
 }

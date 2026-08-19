@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
         log.warn("CustomException: {} - {}", errorCode, e.getMessage());
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ErrorResponse.from(errorCode.name(), errorCode.getMessage()));
+                .body(ErrorResponse.from(errorCode.name(), e.getMessage()));
     }
 
     // @Valid 검증 실패 (요청 DTO의 @NotNull, @NotBlank 등)

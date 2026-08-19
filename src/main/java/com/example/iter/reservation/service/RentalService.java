@@ -49,7 +49,8 @@ public class RentalService {
 
     @Transactional
     public RentalCreateResponse createRental(Long renterId, RentalCreateRequest request) {
-        Equipment equipment = equipmentRepository.findById(request.equipmentId())
+        // 장비 수정·공개 중지·삭제와 신규 대여 생성이 같은 장비 행을 기준으로 직렬화되도록 잠근다.
+        Equipment equipment = equipmentRepository.findByIdForUpdate(request.equipmentId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
         if (equipment.isOwnedBy(renterId)) {
