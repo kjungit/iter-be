@@ -38,7 +38,7 @@ import java.util.List;
 // (기획서 DoD "JWT 기반 인증/인가 기능 정상 동작 (Role + 소유권 기반)" 대응)
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true) // 소유권 기반 인가(@PreAuthorize 커스텀 표현식)를 위해 필요
+@EnableMethodSecurity(prePostEnabled = true, proxyTargetClass = true) // Spec 인터페이스 구현 컨트롤러도 클래스 기반 프록시로 인가를 적용
 @RequiredArgsConstructor
 public class SecurityConfig {
 
