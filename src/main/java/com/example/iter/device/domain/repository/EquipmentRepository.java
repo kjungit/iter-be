@@ -29,7 +29,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
                     from Equipment e
                     left join Review r on r.equipment = e
                     where e.status = EquipmentStatus.ACTIVE
-                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')))
+                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')) escape '\\')
                       and (:category is null or e.category = :category)
                       and (:minPrice is null or e.dailyPrice >= :minPrice)
                       and (:maxPrice is null or e.dailyPrice <= :maxPrice)
@@ -61,7 +61,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
                     select count(e.id)
                     from Equipment e
                     where e.status = EquipmentStatus.ACTIVE
-                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')))
+                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')) escape '\\')
                       and (:category is null or e.category = :category)
                       and (:minPrice is null or e.dailyPrice >= :minPrice)
                       and (:maxPrice is null or e.dailyPrice <= :maxPrice)

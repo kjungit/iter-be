@@ -27,7 +27,7 @@ public class EquipmentQueryService {
 
     public EquipmentListResponse getEquipmentList(EquipmentSearchRequest request) {
         Page<EquipmentSearchRow> rows = equipmentRepository.searchPublicEquipment(
-                request.keyword(),
+                escapeLikePattern(request.keyword()),
                 request.category(),
                 request.minPrice(),
                 request.maxPrice(),
@@ -85,5 +85,15 @@ public class EquipmentQueryService {
                 row.averageRating(),
                 row.reviewCount()
         );
+    }
+
+    private String escapeLikePattern(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }
