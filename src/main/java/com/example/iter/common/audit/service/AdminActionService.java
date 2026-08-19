@@ -24,7 +24,6 @@ public class AdminActionService {
                 .action(action)
                 .reason(reason)
                 .build();
-
         adminActionRepository.save(adminAction);
     }
 }

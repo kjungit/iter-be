@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 // ERD RENTAL 엔티티
 // equipmentId/renterId는 각각 device/auth 도메인 PK를 값으로만 참조 (도메인 간 결합 최소화).
@@ -74,6 +75,12 @@ public class Rental extends BaseTimeEntity {
     @Column(name = "request_message", columnDefinition = "TEXT")
     private String requestMessage;
 
+    @Column(name = "reject_reason", length = 200)
+    private String rejectReason;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
@@ -87,6 +94,16 @@ public class Rental extends BaseTimeEntity {
 
     public void changeStatus(RentalStatus status) {
         this.status = status;
+    }
+
+    public void approve() {
+        this.status = RentalStatus.APPROVED;
+        this.approvedAt = LocalDateTime.now();
+    }
+
+    public void reject(String reason) {
+        this.status = RentalStatus.REJECTED;
+        this.rejectReason = reason;
     }
 
     // 정상 반납으로 거래를 완료합니다.
