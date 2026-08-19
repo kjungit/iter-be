@@ -8,10 +8,10 @@ public record EquipmentImageResponse(
         int sortOrder,
         boolean thumbnail
 ) {
-    public static EquipmentImageResponse from(EquipmentImage image) {
+    public static EquipmentImageResponse from(EquipmentImage image, String resolvedImageUrl) {
         return new EquipmentImageResponse(
                 image.getId(),
-                image.getImageUrl(),
+                resolvedImageUrl,
                 image.getSortOrder(),
                 image.isThumbnail()
         );

@@ -19,6 +19,7 @@ import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.dto.response.EquipmentOwnerResponse;
 import com.example.iter.device.dto.response.EquipmentSummaryResponse;
 import com.example.iter.device.service.model.EquipmentSearchRow;
+import com.example.iter.device.support.EquipmentImageUrlResolver;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class EquipmentQueryService {
     private final EquipmentImageRepository equipmentImageRepository;
     private final UserRepository userRepository;
     private final RentalRepository rentalRepository;
+    private final EquipmentImageUrlResolver imageUrlResolver;
 
     public EquipmentAvailabilityResponse getEquipmentAvailability(
             Long equipmentId,
@@ -95,7 +97,8 @@ public class EquipmentQueryService {
         List<EquipmentImageResponse> images = equipmentImageRepository
                 .findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId)
                 .stream()
-                .map(EquipmentImageResponse::from)
+                .map(image -> EquipmentImageResponse.from(
+                        image, imageUrlResolver.resolve(image)))
                 .toList();
 
         return new EquipmentDetailResponse(
@@ -185,7 +188,7 @@ public class EquipmentQueryService {
         equipmentImageRepository
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(equipmentIds)
                 .forEach(image -> thumbnailUrls.putIfAbsent(
-                        image.getEquipment().getId(), image.getImageUrl()));
+                        image.getEquipment().getId(), imageUrlResolver.resolve(image)));
         return thumbnailUrls;
     }
 

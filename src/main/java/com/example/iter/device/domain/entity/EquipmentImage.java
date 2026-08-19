@@ -24,6 +24,9 @@ public class EquipmentImage extends BaseCreatedAtEntity {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
+    @Column(name = "object_key", length = 500)
+    private String objectKey;
+
     @Column(name = "sort_order")
     private int sortOrder;
 

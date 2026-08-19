@@ -29,6 +29,14 @@ public enum ErrorCode {
     EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 조회할 수 없는 장비입니다."),
     EQUIPMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인 소유의 장비가 아닙니다."),
     EQUIPMENT_NOT_AVAILABLE(HttpStatus.CONFLICT, "선택한 기간에는 장비를 대여할 수 없습니다."),
+    INVALID_IMAGE(HttpStatus.BAD_REQUEST, "JPEG, PNG, WebP 형식의 이미지를 1장 이상 5장 이하로 등록해주세요."),
+    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장 중 오류가 발생했습니다."),
+    IMAGE_UPLOAD_NOT_FOUND(HttpStatus.NOT_FOUND, "유효한 임시 이미지 업로드를 찾을 수 없습니다."),
+    IMAGE_UPLOAD_EXPIRED(HttpStatus.GONE, "임시 이미지 업로드가 만료되었습니다."),
+    IMAGE_UPLOAD_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 임시 이미지 업로드입니다."),
+    ACTIVE_RENTAL_EXISTS(HttpStatus.CONFLICT, "진행 중인 거래가 있어 장비를 삭제할 수 없습니다."),
+    ACTIVE_DISPUTE_EXISTS(HttpStatus.CONFLICT, "진행 중인 분쟁이 있어 장비를 삭제할 수 없습니다."),
+    EQUIPMENT_STATUS_CHANGE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 장비 공개 상태를 변경할 수 없습니다."),
 
     // Admin (C)
     ADMIN_SUSPENSION_NOT_ALLOWED(HttpStatus.FORBIDDEN,"관리자 계정은 정지할 수 없습니다."),
