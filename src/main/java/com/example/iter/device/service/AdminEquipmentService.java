@@ -123,8 +123,9 @@ public class AdminEquipmentService {
                 && (currentStatus == EquipmentStatus.ACTIVE
                 || currentStatus == EquipmentStatus.INACTIVE);
 
-        // 관리자는 현재 장비 상태가 SUSPENDED인 경우에만 장비 상태를 ACTIVE로 변경하여 차단을 해제할 수 있습니다.
-        boolean canRestore = requestedStatus == EquipmentStatus.ACTIVE && currentStatus == EquipmentStatus.SUSPENDED;
+        // 차단 해제 시 바로 대여 가능한 상태가 되지 않도록 INACTIVE로 복구합니다.
+        // 이후 장비를 다시 활성화할지는 등록자가 직접 결정합니다.
+        boolean canRestore = requestedStatus == EquipmentStatus.INACTIVE && currentStatus == EquipmentStatus.SUSPENDED;
 
         if (!canSuspend && !canRestore) {
             throw new CustomException(ErrorCode.INVALID_EQUIPMENT_STATUS_TRANSITION);
@@ -138,8 +139,12 @@ public class AdminEquipmentService {
             return AdminActionType.SUSPEND_EQUIPMENT;
         }
 
-        equipment.changeStatus(EquipmentStatus.ACTIVE);
-        return AdminActionType.RESTORE_EQUIPMENT;
+        if (requestedStatus == EquipmentStatus.INACTIVE) {
+            equipment.changeStatus(EquipmentStatus.INACTIVE);
+            return AdminActionType.RESTORE_EQUIPMENT;
+        }
+
+        throw new CustomException(ErrorCode.INVALID_EQUIPMENT_STATUS_TRANSITION);
     }
 
     // 한 페이지에 포함된 장비 등록자를 한 번에 조회해 ID 기준 Map으로 변환합니다.
