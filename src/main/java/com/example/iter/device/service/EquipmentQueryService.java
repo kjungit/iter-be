@@ -10,6 +10,8 @@ import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
+import com.example.iter.device.dto.request.MyEquipmentSearchRequest;
+import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.device.dto.response.AvailabilityReason;
 import com.example.iter.device.dto.response.EquipmentAvailabilityResponse;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
@@ -18,6 +20,7 @@ import com.example.iter.device.dto.response.EquipmentImageResponse;
 import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.dto.response.EquipmentOwnerResponse;
 import com.example.iter.device.dto.response.EquipmentSummaryResponse;
+import com.example.iter.device.dto.response.MyEquipmentSummaryResponse;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.device.support.EquipmentImageUrlResolver;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
@@ -173,6 +176,34 @@ public class EquipmentQueryService {
                 rows.isFirst(),
                 rows.isLast()
         );
+    }
+
+    public PageResponse<MyEquipmentSummaryResponse> getMyEquipment(
+            Long ownerId,
+            MyEquipmentSearchRequest request
+    ) {
+        Page<EquipmentSearchRow> rows = equipmentRepository.searchMyEquipment(
+                ownerId,
+                request.status(),
+                request.sort().name(),
+                PageRequest.of(request.page(), request.size())
+        );
+        Map<Long, String> thumbnailUrls = findThumbnailUrls(rows.getContent());
+        Page<MyEquipmentSummaryResponse> responsePage = rows.map(row -> {
+            Equipment equipment = row.equipment();
+            return new MyEquipmentSummaryResponse(
+                    equipment.getId(),
+                    equipment.getName(),
+                    equipment.getCategory(),
+                    equipment.getDailyPrice(),
+                    equipment.getStatus(),
+                    equipment.getProductCondition(),
+                    thumbnailUrls.get(equipment.getId()),
+                    equipment.getAvailableFrom(),
+                    equipment.getAvailableTo()
+            );
+        });
+        return PageResponse.from(responsePage);
     }
 
     private Map<Long, String> findThumbnailUrls(List<EquipmentSearchRow> rows) {
