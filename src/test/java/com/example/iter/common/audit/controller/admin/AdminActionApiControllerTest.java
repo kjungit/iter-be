@@ -8,6 +8,7 @@ import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.dto.request.AdminActionSearchRequest;
 import com.example.iter.common.audit.dto.response.AdminActionResponse;
 import com.example.iter.common.audit.service.AdminActionQueryService;
+import com.example.iter.common.config.RestApiSecurityTestConfig;
 import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
@@ -44,12 +45,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AdminActionApiController.class)
 @Import({
         GlobalExceptionHandler.class,
+        RestApiSecurityTestConfig.class,
         AdminActionApiControllerTest.MethodSecurityTestConfig.class
 })
 class AdminActionApiControllerTest {
 
     @TestConfiguration
-    @EnableMethodSecurity
+    @EnableMethodSecurity(proxyTargetClass = true)
     static class MethodSecurityTestConfig {
     }
 

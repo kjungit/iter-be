@@ -9,6 +9,7 @@ import com.example.iter.auth.dto.response.AdminUserDetailResponse;
 import com.example.iter.auth.dto.response.AdminUserStatusResponse;
 import com.example.iter.auth.dto.response.AdminUserSummaryResponse;
 import com.example.iter.auth.service.AdminUserService;
+import com.example.iter.common.config.RestApiSecurityTestConfig;
 import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
@@ -43,11 +44,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminUserApiController.class)
-@Import({GlobalExceptionHandler.class, AdminUserApiControllerTest.MethodSecurityTestConfig.class})
+@Import({
+        GlobalExceptionHandler.class,
+        RestApiSecurityTestConfig.class,
+        AdminUserApiControllerTest.MethodSecurityTestConfig.class
+})
 class AdminUserApiControllerTest {
 
     @TestConfiguration
-    @EnableMethodSecurity
+    @EnableMethodSecurity(proxyTargetClass = true)
     static class MethodSecurityTestConfig {
     }
 

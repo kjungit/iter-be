@@ -3,6 +3,7 @@ package com.example.iter.reservation.controller.api;
 import com.example.iter.auth.domain.entity.Role;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
+import com.example.iter.common.config.RestApiSecurityTestConfig;
 import com.example.iter.common.dto.request.PagingRequest;
 import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.common.exception.CustomException;
@@ -47,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ReturnApiController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, RestApiSecurityTestConfig.class})
 class ReturnApiControllerTest {
 
     private static final Long OWNER_ID = 1L;

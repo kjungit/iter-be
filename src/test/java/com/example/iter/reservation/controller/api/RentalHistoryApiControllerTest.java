@@ -4,6 +4,7 @@ import com.example.iter.auth.domain.entity.Role;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
+import com.example.iter.common.config.RestApiSecurityTestConfig;
 import com.example.iter.common.dto.request.PagingRequest;
 import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
@@ -41,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(RentalHistoryApiController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, RestApiSecurityTestConfig.class})
 class RentalHistoryApiControllerTest {
 
     private static final Long USER_ID = 1L;
