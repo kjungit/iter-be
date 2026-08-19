@@ -38,6 +38,10 @@ jwt:
   access-token-validity: 15m
   refresh-token-validity: 14d
 
+toss:
+  client-key: ${TOSS_CLIENT_KEY:test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq}
+  secret-key: ${TOSS_SECRET_KEY:test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R}
+
 auth:
   refresh-cookie:
     name: __Secure-iter-refresh
