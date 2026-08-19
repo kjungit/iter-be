@@ -17,6 +17,7 @@ import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -32,6 +33,7 @@ public class PaymentService {
     private final TossProperties tossProperties;
     private final PaymentFailureRecorder paymentFailureRecorder;
 
+    @Transactional
     public PaymentReadyResponse ready( Long rentalId, Long renterId) {
         Rental rental = getPayableRental(rentalId, renterId);
 
@@ -54,6 +56,7 @@ public class PaymentService {
         return PaymentReadyResponse.of(rental, orderId, amount, tossProperties.clientKey());
     }
 
+    @Transactional
     public PaymentConfirmResponse confirm( Long rentalId, Long renterId, PaymentConfirmRequest request ) {
         Rental rental = getPayableRental(rentalId, renterId);
 
