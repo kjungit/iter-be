@@ -47,17 +47,15 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (user.getPassword() == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.USER_SUSPENDED);
-        }
-        if (user.getStatus() == UserStatus.DELETED) {
-            throw new CustomException(ErrorCode.USER_DELETED);
-        }
+        return issueTokens(user);
+    }
 
+    public IssuedTokenPair issueTokens(User user) {
+        validateLoginAllowed(user);
         String accessToken = jwtTokenProvider.generateAccessToken(user);
         String refreshToken = refreshTokenService.issueForLogin(user);
         return new IssuedTokenPair(accessToken, refreshToken);
@@ -69,5 +67,14 @@ public class AuthService {
 
     public void logout(Long userId, String rawRefreshToken) {
         refreshTokenService.revoke(userId, rawRefreshToken);
+    }
+
+    private void validateLoginAllowed(User user) {
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new CustomException(ErrorCode.USER_SUSPENDED);
+        }
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new CustomException(ErrorCode.USER_DELETED);
+        }
     }
 }
