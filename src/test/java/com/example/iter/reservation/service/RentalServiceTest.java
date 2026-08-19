@@ -61,7 +61,7 @@ class RentalServiceTest {
     }
 
     private RentalCreateRequest request() {
-        return new RentalCreateRequest(1L, LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 25),
+        return new RentalCreateRequest(1L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
     }
 

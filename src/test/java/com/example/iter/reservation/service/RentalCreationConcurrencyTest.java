@@ -5,6 +5,7 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
@@ -49,7 +50,7 @@ class RentalCreationConcurrencyTest {
         User owner = userRepository.save(user("owner-" + System.nanoTime()));
         Equipment equipment = equipmentRepository.save(Equipment.builder()
                 .ownerId(owner.getId())
-                .category("카메라")
+                .category(EquipmentCategory.CAMERA)
                 .name("소니 A7C2")
                 .dailyPrice(BigDecimal.valueOf(30000))
                 .build());

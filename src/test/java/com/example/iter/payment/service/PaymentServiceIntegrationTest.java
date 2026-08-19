@@ -3,6 +3,7 @@ package com.example.iter.payment.service;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.payment.client.TossPaymentClient;
 import com.example.iter.payment.domain.entity.Payment;
@@ -54,7 +55,7 @@ class PaymentServiceIntegrationTest {
         User owner = userRepository.save(user("owner"));
         User renter = userRepository.save(user("renter"));
         Equipment equipment = equipmentRepository.save(Equipment.builder()
-                .ownerId(owner.getId()).category("카메라").name("A7C2")
+                .ownerId(owner.getId()).category(EquipmentCategory.CAMERA).name("A7C2")
                 .dailyPrice(BigDecimal.valueOf(10000)).build());
         Rental rental = rentalRepository.save(Rental.builder()
                 .equipmentId(equipment.getId()).renterId(renter.getId())
