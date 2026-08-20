@@ -27,4 +27,16 @@ class RentalConflictPolicyTest {
                         RentalStatus.CANCELED
                 );
     }
+
+    @Test
+    void 승인_전과_종료된_상태는_확정_예약_일정에_노출하지_않는다() {
+        assertThat(RentalConflictPolicy.nonScheduledStatuses())
+                .containsExactlyInAnyOrder(
+                        RentalStatus.PENDING,
+                        RentalStatus.REQUESTED,
+                        RentalStatus.REJECTED,
+                        RentalStatus.CANCELED,
+                        RentalStatus.COMPLETED
+                );
+    }
 }

@@ -39,6 +39,19 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
             """)
     Optional<EquipmentDetailRow> findPublicDetailById(@Param("equipmentId") Long equipmentId);
 
+    @Query("""
+            select new com.example.iter.device.service.model.EquipmentDetailRow(
+                e,
+                coalesce(avg(r.rating), 0.0),
+                count(r.id)
+            )
+            from Equipment e
+            left join Review r on r.equipment = e
+            where e.id = :equipmentId
+            group by e
+            """)
+    Optional<EquipmentDetailRow> findManagementDetailById(@Param("equipmentId") Long equipmentId);
+
     @Query(
             value = """
                     select new com.example.iter.device.service.model.EquipmentSearchRow(
@@ -110,6 +123,40 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses,
+            @Param("sort") String sort,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select new com.example.iter.device.service.model.EquipmentSearchRow(
+                        e,
+                        coalesce(avg(r.rating), 0.0),
+                        count(r.id)
+                    )
+                    from Equipment e
+                    left join Review r on r.equipment = e
+                    where e.ownerId = :ownerId
+                      and (:status is null or e.status = :status)
+                    group by e
+                    order by
+                      case when :sort = 'LATEST' then e.createdAt end desc,
+                      case when :sort = 'PRICE_ASC' then e.dailyPrice end asc,
+                      case when :sort = 'PRICE_DESC' then e.dailyPrice end desc,
+                      case when :sort = 'RATING_DESC' then coalesce(avg(r.rating), 0.0) end desc,
+                      case when :sort = 'RATING_DESC' then count(r.id) end desc,
+                      e.id desc
+                    """,
+            countQuery = """
+                    select count(e.id)
+                    from Equipment e
+                    where e.ownerId = :ownerId
+                      and (:status is null or e.status = :status)
+                    """
+    )
+    Page<EquipmentSearchRow> searchMyEquipment(
+            @Param("ownerId") Long ownerId,
+            @Param("status") EquipmentStatus status,
             @Param("sort") String sort,
             Pageable pageable
     );

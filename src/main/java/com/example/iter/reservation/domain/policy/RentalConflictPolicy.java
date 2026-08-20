@@ -20,6 +20,14 @@ public final class RentalConflictPolicy {
             RentalStatus.CANCELED
     );
 
+    private static final Set<RentalStatus> NON_SCHEDULED_STATUSES = Set.of(
+            RentalStatus.PENDING,
+            RentalStatus.REQUESTED,
+            RentalStatus.REJECTED,
+            RentalStatus.CANCELED,
+            RentalStatus.COMPLETED
+    );
+
     private RentalConflictPolicy() {
     }
 
@@ -29,5 +37,9 @@ public final class RentalConflictPolicy {
 
     public static Set<RentalStatus> nonConfirmedStatuses() {
         return NON_CONFIRMED_STATUSES;
+    }
+
+    public static Set<RentalStatus> nonScheduledStatuses() {
+        return NON_SCHEDULED_STATUSES;
     }
 }

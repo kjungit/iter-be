@@ -71,6 +71,13 @@ auth:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  storage:
+    s3:
+      bucket: ${S3_BUCKET:iter-local}
+      region: ${AWS_REGION:ap-northeast-2}
+      public-base-url: ${S3_PUBLIC_BASE_URL:}
+      key-prefix: ${S3_KEY_PREFIX:equipment}
+      presigned-url-validity: ${S3_PRESIGNED_URL_VALIDITY:5m}
   oauth2:
     frontend-callback-uri: ${OAUTH2_FRONTEND_CALLBACK_URI:http://localhost:5173/oauth2/callback}
     exchange-token-validity: 1m

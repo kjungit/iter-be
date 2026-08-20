@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface RentalRepository extends JpaRepository<Rental, Long> {
@@ -94,5 +95,42 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("endDate") LocalDate endDate,
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
                                             );
+
+    boolean existsByEquipmentIdAndStatusIn(
+            Long equipmentId,
+            Collection<RentalStatus> statuses
+    );
+
+    boolean existsByEquipmentIdAndStatus(Long equipmentId, RentalStatus status);
+
+    @Query("""
+            select case when count(r.id) > 0 then true else false end
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and (r.startDate < :availableFrom or r.endDate > :availableTo)
+            """)
+    boolean existsOccupyingRentalOutsidePeriod(
+            @Param("equipmentId") Long equipmentId,
+            @Param("availableFrom") LocalDate availableFrom,
+            @Param("availableTo") LocalDate availableTo,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+    );
+
+    @Query("""
+            select r
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and r.startDate <= :to
+              and r.endDate >= :from
+            order by r.startDate asc, r.endDate asc, r.id asc
+            """)
+    List<Rental> findEquipmentSchedule(
+            @Param("equipmentId") Long equipmentId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+    );
 
 }

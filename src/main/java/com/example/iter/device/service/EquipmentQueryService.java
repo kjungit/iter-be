@@ -1,6 +1,8 @@
 package com.example.iter.device.service;
 
 import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.auth.domain.entity.Role;
+import com.example.iter.auth.domain.entity.User;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
@@ -10,6 +12,9 @@ import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
+import com.example.iter.device.dto.request.MyEquipmentSearchRequest;
+import com.example.iter.device.dto.request.EquipmentScheduleRequest;
+import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.device.dto.response.AvailabilityReason;
 import com.example.iter.device.dto.response.EquipmentAvailabilityResponse;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
@@ -18,7 +23,11 @@ import com.example.iter.device.dto.response.EquipmentImageResponse;
 import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.dto.response.EquipmentOwnerResponse;
 import com.example.iter.device.dto.response.EquipmentSummaryResponse;
+import com.example.iter.device.dto.response.MyEquipmentSummaryResponse;
+import com.example.iter.device.dto.response.EquipmentScheduleResponse;
+import com.example.iter.device.dto.response.RentalScheduleItemResponse;
 import com.example.iter.device.service.model.EquipmentSearchRow;
+import com.example.iter.device.support.EquipmentImageUrlResolver;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +52,7 @@ public class EquipmentQueryService {
     private final EquipmentImageRepository equipmentImageRepository;
     private final UserRepository userRepository;
     private final RentalRepository rentalRepository;
+    private final EquipmentImageUrlResolver imageUrlResolver;
 
     public EquipmentAvailabilityResponse getEquipmentAvailability(
             Long equipmentId,
@@ -95,7 +105,8 @@ public class EquipmentQueryService {
         List<EquipmentImageResponse> images = equipmentImageRepository
                 .findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId)
                 .stream()
-                .map(EquipmentImageResponse::from)
+                .map(image -> EquipmentImageResponse.from(
+                        image, imageUrlResolver.resolve(image)))
                 .toList();
 
         return new EquipmentDetailResponse(
@@ -172,6 +183,59 @@ public class EquipmentQueryService {
         );
     }
 
+    public PageResponse<MyEquipmentSummaryResponse> getMyEquipment(
+            Long ownerId,
+            MyEquipmentSearchRequest request
+    ) {
+        Page<EquipmentSearchRow> rows = equipmentRepository.searchMyEquipment(
+                ownerId,
+                request.status(),
+                request.sort().name(),
+                PageRequest.of(request.page(), request.size())
+        );
+        Map<Long, String> thumbnailUrls = findThumbnailUrls(rows.getContent());
+        Page<MyEquipmentSummaryResponse> responsePage = rows.map(row -> {
+            Equipment equipment = row.equipment();
+            return new MyEquipmentSummaryResponse(
+                    equipment.getId(),
+                    equipment.getName(),
+                    equipment.getCategory(),
+                    equipment.getDailyPrice(),
+                    equipment.getStatus(),
+                    equipment.getProductCondition(),
+                    thumbnailUrls.get(equipment.getId()),
+                    equipment.getAvailableFrom(),
+                    equipment.getAvailableTo()
+            );
+        });
+        return PageResponse.from(responsePage);
+    }
+
+    public EquipmentScheduleResponse getEquipmentSchedule(
+            User requester,
+            Long equipmentId,
+            EquipmentScheduleRequest request
+    ) {
+        Equipment equipment = equipmentRepository.findById(equipmentId)
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.EQUIPMENT_NOT_FOUND, "존재하지 않는 장비입니다."));
+        if (!equipment.isOwnedBy(requester.getId()) && requester.getRole() != Role.ADMIN) {
+            throw new CustomException(
+                    ErrorCode.FORBIDDEN, "본인 소유 장비의 예약 일정만 조회할 수 있습니다.");
+        }
+
+        List<RentalScheduleItemResponse> rentals = rentalRepository.findEquipmentSchedule(
+                        equipmentId,
+                        request.from(),
+                        request.to(),
+                        RentalConflictPolicy.nonScheduledStatuses())
+                .stream()
+                .map(RentalScheduleItemResponse::from)
+                .toList();
+        return new EquipmentScheduleResponse(
+                equipmentId, request.from(), request.to(), rentals);
+    }
+
     private Map<Long, String> findThumbnailUrls(List<EquipmentSearchRow> rows) {
         List<Long> equipmentIds = rows.stream()
                 .map(row -> row.equipment().getId())
@@ -185,7 +249,7 @@ public class EquipmentQueryService {
         equipmentImageRepository
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(equipmentIds)
                 .forEach(image -> thumbnailUrls.putIfAbsent(
-                        image.getEquipment().getId(), image.getImageUrl()));
+                        image.getEquipment().getId(), imageUrlResolver.resolve(image)));
         return thumbnailUrls;
     }
 

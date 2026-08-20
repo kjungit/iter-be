@@ -24,10 +24,21 @@ public class EquipmentImage extends BaseCreatedAtEntity {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
+    @Column(name = "object_key", length = 500)
+    private String objectKey;
+
     @Column(name = "sort_order")
     private int sortOrder;
 
     @Column(name = "is_thumbnail")
     @Builder.Default
     private boolean thumbnail = false;
+
+    public void changeThumbnail(boolean thumbnail) {
+        this.thumbnail = thumbnail;
+    }
+
+    public void changeSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }
