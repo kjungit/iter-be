@@ -8,11 +8,14 @@ import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.repository.EquipmentRepository;
+import com.example.iter.payment.client.TossApiException;
+import com.example.iter.payment.client.TossPaymentClient;
 import com.example.iter.payment.domain.entity.Payment;
 import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.PaymentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
+import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.dto.request.RentalCreateRequest;
 import com.example.iter.reservation.dto.response.RentalCancelResponse;
@@ -29,8 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -45,6 +48,7 @@ public class RentalService {
     private final EquipmentRepository equipmentRepository;
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
+    private final TossPaymentClient tossPaymentClient;
 
     @Transactional
     public RentalCreateResponse createRental(Long renterId, RentalCreateRequest request) {
@@ -68,7 +72,12 @@ public class RentalService {
             throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
 
-        if (rentalRepository.existsConflictingConfirmedRental(equipment.getId(), startDate, endDate)) {
+        // 같은 장비에 대한 동시 요청을 직렬화하기 위해 락을 잡고 재조회 — 선점 방식이라
+        // "겹치는지 확인"과 "저장"이 하나의 원자적 구간이어야 두 명이 동시에 같은 기간을 통과시키지 못한다.
+        equipment = equipmentRepository.findByIdForUpdate(equipment.getId())
+                .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+        if (rentalRepository.existsConflictingActiveRental(equipment.getId(), startDate, endDate)) {
             throw new CustomException(ErrorCode.RENTAL_PERIOD_CONFLICT);
         }
 
@@ -81,7 +90,7 @@ public class RentalService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .productNameSnapshot(equipment.getName())
-                .categorySnapshot(equipment.getCategory())
+                .categorySnapshot(equipment.getCategory().name())
                 .dailyPriceSnapshot(equipment.getDailyPrice())
                 .rentalDays(rentalDays)
                 .totalPrice(totalPrice)
@@ -150,19 +159,14 @@ public class RentalService {
 
         Payment payment = paymentRepository.findByRentalId(rentalId).orElse(null);
         if (payment != null && payment.getStatus() == PaymentStatus.PAID) {
-            userRepository.refundPointBalance(rental.getRenterId(), payment.getAmount());
-            payment.markRefunded();
+            cancelTossPayment(payment, "대여 취소");
         }
 
         rental.changeStatus(RentalStatus.CANCELED);
 
-        BigDecimal pointBalance = userRepository.findById(rental.getRenterId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND))
-                .getPointBalance();
-
         PaymentStatus paymentStatus = payment != null? payment.getStatus(): null;
 
-        return RentalCancelResponse.of(rental, paymentStatus, pointBalance);
+        return RentalCancelResponse.of(rental, paymentStatus);
     }
 
     @Transactional
@@ -188,20 +192,17 @@ public class RentalService {
 
         // 2) 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
         if (rentalRepository.existsConflictingConfirmedRental(
-                equipment.getId(), rental.getStartDate(), rental.getEndDate())) {
+                equipment.getId(),
+                rental.getStartDate(),
+                rental.getEndDate(),
+                RentalConflictPolicy.nonConfirmedStatuses())) {
             throw new CustomException(ErrorCode.RESERVATION_CONFLICT);
         }
 
         // 3) 충돌 없음 확인되면 예약 승인
+        // 선점 방식(createRental 시점 락)이라 같은 기간에 REQUESTED가 동시에 여러 건 존재할 수 없어서
+        // 예전처럼 "겹치는 다른 REQUESTED 자동 거절" 로직은 더 이상 필요 없다.
         rental.approve();
-
-        // 4) 같은 장비가 겹치는 기간의 다른 REQUESTED 예약들은 이 트랜잭션 안에서 자동 거절+환불 진행
-        // - (별도 API 호출이 아니라, 승인 트랜잭션에 포함되어야 "1건만 확정"이 원자적으로 보장됨)
-        List<Rental> competitors = rentalRepository.findOverlappingRequestedRentals(
-                equipment.getId(), rental.getId(), rental.getStartDate(), rental.getEndDate());
-        for (Rental competitor : competitors) {
-            rejectAndRefund(competitor, "다른 예약이 먼저 승인되어 자동 거절되었습니다.");
-        }
 
         return RentalApproveResponse.from(rental);
     }
@@ -227,14 +228,31 @@ public class RentalService {
         return RentalRejectResponse.of(rental, paymentStatus);
     }
 
-    // 결제 완료건이면 환불하고 예약을 REJECTED로 전환 — 수동 거절과 승인 시 경쟁 예약 자동거절에서 공유
+    // 30분 안에 결제(confirm)를 완료하지 않은 PENDING 요청을 자동 취소해 선점을 풀어준다.
+    // RentalExpirationScheduler가 주기적으로 호출한다.
+    @Transactional
+    public int expirePendingRentals() {
+        return rentalRepository.expirePendingRentals(LocalDateTime.now().minusMinutes(30));
+    }
+
+    // 결제 완료건이면 환불하고 예약을 REJECTED로 전환
     private void rejectAndRefund(Rental rental, String reason) {
         Payment payment = paymentRepository.findByRentalId(rental.getId()).orElse(null);
         if (payment != null && payment.getStatus() == PaymentStatus.PAID) {
-            userRepository.refundPointBalance(rental.getRenterId(), payment.getAmount());
-            payment.markRefunded();
+            cancelTossPayment(payment, reason);
         }
         rental.reject(reason);
+    }
+
+    // 실제 토스 결제 취소 요청 — 실패하면 예약도 취소/거절 처리하지 않도록 예외를 그대로 전파한다
+    // (토스 취소가 안 됐는데 우리 쪽만 취소 처리하면 돈과 상태가 어긋난다).
+    private void cancelTossPayment(Payment payment, String reason) {
+        try {
+            tossPaymentClient.cancel(payment.getPaymentKey(), reason, payment.ensureCancelIdempotencyKey());
+            payment.markRefunded();
+        } catch (TossApiException e) {
+            throw new CustomException(ErrorCode.TOSS_PAYMENT_FAILED);
+        }
     }
 
     private Rental getRentalOrThrow(Long rentalId) {

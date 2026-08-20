@@ -1,14 +1,15 @@
 package com.example.iter.common.exception;
 
 import com.example.iter.common.response.ErrorResponse;
-import com.example.iter.payment.dto.response.PointInsufficientErrorResponse;
-import com.example.iter.payment.exception.PointInsufficientException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -50,13 +51,28 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.from(ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getMessage()));
     }
 
-    // 포인트 부족 (B 담당) — message 외에 pointBalance/requiredAmount를 같이 내려줘야 해서 별도 예외/응답 타입으로 분리
-    @ExceptionHandler(PointInsufficientException.class)
-    public ResponseEntity<PointInsufficientErrorResponse> handlePointInsufficient(PointInsufficientException e) {
-        log.warn("PointInsufficient: balance={}, required={}", e.getPointBalance(), e.getRequiredAmount());
+    // @ModelAttribute 바인딩 실패 또는 enum 등 요청 파라미터 타입 변환 실패
+    @ExceptionHandler({BindException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleRequestBindingException(Exception e) {
+        log.warn("요청 파라미터 바인딩 실패: {}", e.getMessage());
         return ResponseEntity
-                .status(ErrorCode.POINT_INSUFFICIENT.getStatus())
-                .body(PointInsufficientErrorResponse.of(e.getMessage(), e.getPointBalance(), e.getRequiredAmount()));
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.from(
+                        ErrorCode.VALIDATION_ERROR.name(),
+                        ErrorCode.VALIDATION_ERROR.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
+            HttpMediaTypeNotSupportedException e
+    ) {
+        log.warn("지원하지 않는 Content-Type: {}", e.getContentType());
+        return ResponseEntity
+                .status(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getStatus())
+                .body(ErrorResponse.from(
+                        ErrorCode.UNSUPPORTED_MEDIA_TYPE.name(),
+                        ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()
+                ));
     }
 
     // 인가 실패 (소유권 없음, 권한 부족 등 — @PreAuthorize에서 발생)

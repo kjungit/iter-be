@@ -2,6 +2,9 @@ package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentStatus;
+import com.example.iter.device.domain.entity.EquipmentCategory;
+import com.example.iter.device.service.model.EquipmentSearchRow;
+import com.example.iter.reservation.domain.entity.RentalStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,9 +14,86 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collection;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
-    // TODO: 카테고리/가격/기간 검색, 정렬, 활성 상태 필터링 등은 QueryDSL 도입 여부와 함께 팀 논의 필요
+
+    @Query(
+            value = """
+                    select new com.example.iter.device.service.model.EquipmentSearchRow(
+                        e,
+                        coalesce(avg(r.rating), 0.0),
+                        count(r.id)
+                    )
+                    from Equipment e
+                    left join Review r on r.equipment = e
+                    where e.status = EquipmentStatus.ACTIVE
+                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')) escape '\\')
+                      and (:category is null or e.category = :category)
+                      and (:minPrice is null or e.dailyPrice >= :minPrice)
+                      and (:maxPrice is null or e.dailyPrice <= :maxPrice)
+                      and (
+                          :startDate is null
+                          or (
+                              e.availableFrom <= :startDate
+                              and e.availableTo >= :endDate
+                              and not exists (
+                                  select rental.id
+                                  from Rental rental
+                                  where rental.equipmentId = e.id
+                                    and rental.status not in :excludedStatuses
+                                    and rental.startDate <= :endDate
+                                    and rental.endDate >= :startDate
+                              )
+                          )
+                      )
+                    group by e
+                    order by
+                      case when :sort = 'LATEST' then e.createdAt end desc,
+                      case when :sort = 'PRICE_ASC' then e.dailyPrice end asc,
+                      case when :sort = 'PRICE_DESC' then e.dailyPrice end desc,
+                      case when :sort = 'RATING_DESC' then coalesce(avg(r.rating), 0.0) end desc,
+                      case when :sort = 'RATING_DESC' then count(r.id) end desc,
+                      e.id desc
+                    """,
+            countQuery = """
+                    select count(e.id)
+                    from Equipment e
+                    where e.status = EquipmentStatus.ACTIVE
+                      and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')) escape '\\')
+                      and (:category is null or e.category = :category)
+                      and (:minPrice is null or e.dailyPrice >= :minPrice)
+                      and (:maxPrice is null or e.dailyPrice <= :maxPrice)
+                      and (
+                          :startDate is null
+                          or (
+                              e.availableFrom <= :startDate
+                              and e.availableTo >= :endDate
+                              and not exists (
+                                  select rental.id
+                                  from Rental rental
+                                  where rental.equipmentId = e.id
+                                    and rental.status not in :excludedStatuses
+                                    and rental.startDate <= :endDate
+                                    and rental.endDate >= :startDate
+                              )
+                          )
+                      )
+                    """
+    )
+    Page<EquipmentSearchRow> searchPublicEquipment(
+            @Param("keyword") String keyword,
+            @Param("category") EquipmentCategory category,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses,
+            @Param("sort") String sort,
+            Pageable pageable
+    );
 
     /**
      * 대여 승인(#6) 전용 — SELECT ... FOR UPDATE로 equipment 행을 잠근다.

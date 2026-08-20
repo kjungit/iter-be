@@ -10,6 +10,26 @@ spring:
       hibernate:
         format_sql: true
     open-in-view: false
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - profile_nickname
+              - account_email
+            provider: kakao
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
 
 jwt:
   issuer: iter
@@ -17,6 +37,10 @@ jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-validity: 15m
   refresh-token-validity: 14d
+
+toss:
+  client-key: ${TOSS_CLIENT_KEY:test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq}
+  secret-key: ${TOSS_SECRET_KEY:test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R}
 
 auth:
   refresh-cookie:
@@ -30,6 +54,11 @@ auth:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  oauth2:
+    frontend-callback-uri: ${OAUTH2_FRONTEND_CALLBACK_URI:http://localhost:5173/oauth2/callback}
+    exchange-token-validity: 1m
+    action-token-validity: 5m
+    pending-token-retention: 1d
 
 springdoc:
   swagger-ui:

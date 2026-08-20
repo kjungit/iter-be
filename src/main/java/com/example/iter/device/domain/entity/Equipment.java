@@ -24,8 +24,9 @@ public class Equipment extends BaseTimeEntity {
     @Column(name = "owner_id", nullable = false)
     private Long ownerId;
 
-    @Column(nullable = false, length = 50)
-    private String category;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private EquipmentCategory category;
 
     @Column(nullable = false, length = 100)
     private String name;

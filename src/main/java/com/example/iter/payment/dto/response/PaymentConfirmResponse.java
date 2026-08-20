@@ -8,24 +8,24 @@ import com.example.iter.reservation.domain.entity.RentalStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record PaymentResponse(
+public record PaymentConfirmResponse(
         Long rentalId,
         Long paymentId,
+        String paymentKey,
         BigDecimal amount,
         PaymentStatus paymentStatus,
         LocalDateTime paidAt,
-        RentalStatus rentalStatus,
-        BigDecimal pointBalance
+        RentalStatus rentalStatus
 ) {
-    public static PaymentResponse of(Rental rental, Payment payment, BigDecimal pointBalance) {
-        return new PaymentResponse(
+    public static PaymentConfirmResponse of( Rental rental, Payment payment ) {
+        return new PaymentConfirmResponse(
                 rental.getId(),
                 payment.getId(),
+                payment.getPaymentKey(),
                 payment.getAmount(),
                 payment.getStatus(),
                 payment.getPaidAt(),
-                rental.getStatus(),
-                pointBalance
+                rental.getStatus()
         );
     }
 }
