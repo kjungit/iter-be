@@ -67,7 +67,10 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/v3/api-docs/**",
 
-            "/error"
+            "/error",
+
+            // 토스 서버가 직접 호출하는 웹훅 — 우리 JWT를 실어보내지 않으므로 인증 대상에서 제외
+            "/api/v1/webhooks/toss"
     };
 
     @Bean

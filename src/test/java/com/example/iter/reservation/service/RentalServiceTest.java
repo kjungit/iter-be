@@ -21,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +61,7 @@ class RentalServiceTest {
     }
 
     private RentalCreateRequest request() {
-        return new RentalCreateRequest(1L, LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 25),
+        return new RentalCreateRequest(1L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
     }
 
@@ -85,7 +84,8 @@ class RentalServiceTest {
     @Test
     void 대여_요청_생성시_일수와_총액을_계산한다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = rentalService.createRental(2L, request());
@@ -128,9 +128,10 @@ class RentalServiceTest {
     }
 
     @Test
-    void 겹치는_확정_예약이_있으면_요청할_수_없다() {
+    void 겹치는_예약이_있으면_요청할_수_없다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -187,20 +188,16 @@ class RentalServiceTest {
     }
 
     @Test
-    void 충돌이_없으면_승인되고_경쟁하는_REQUESTED_예약은_자동_거절된다() {
+    void 충돌이_없으면_승인된다() {
         Rental target = rental(10L, RentalStatus.REQUESTED);
-        Rental competitor = rental(11L, RentalStatus.REQUESTED);
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(false);
-        when(rentalRepository.findOverlappingRequestedRentals(anyLong(), anyLong(), any(), any()))
-                .thenReturn(List.of(competitor));
 
         var response = rentalService.approveRental(10L, 99L, false);
 
         assertThat(response.status()).isEqualTo(RentalStatus.APPROVED);
-        assertThat(competitor.getStatus()).isEqualTo(RentalStatus.REJECTED);
     }
 
     @Test
