@@ -1,6 +1,7 @@
 package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.service.model.EquipmentDetailRow;
 import com.example.iter.device.service.model.EquipmentSearchRow;
@@ -118,5 +119,31 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Equipment e WHERE e.id = :id")
     Optional<Equipment> findByIdForUpdate(@Param("id") Long id);
+
+    // 관리자가 장비명, 카테고리, 상태 조건으로 전체 장비를 조회합니다.
+    // LOCATE를 사용해 %, _ 등의 문자를 와일드카드가 아닌 실제 검색 문자로 처리합니다.
+    // 전달되지 않은 조건은 조회에 적용하지 않습니다.
+    @Query("""
+        select e
+        from Equipment e
+        where (
+                :keyword is null
+                or locate(lower(:keyword), lower(e.name)) > 0
+              )
+          and (
+                :category is null
+                or lower(e.category) = lower(:category)
+              )
+          and (
+                :status is null
+                or e.status = :status
+              )
+        """)
+    Page<Equipment> searchForAdmin(
+            @Param("keyword") String keyword,
+            @Param("category") String category,
+            @Param("status") EquipmentStatus status,
+            Pageable pageable
+    );
 
 }
