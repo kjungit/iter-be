@@ -1,8 +1,8 @@
 package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
-import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.EquipmentCategory;
+import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.service.model.EquipmentDetailRow;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.reservation.domain.entity.RentalStatus;
@@ -11,13 +11,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Optional;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
@@ -146,4 +148,15 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
             Pageable pageable
     );
 
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update Equipment e
+            set e.status = :status, e.updatedAt = :updatedAt
+            where e.ownerId = :ownerId and e.status <> :status
+            """)
+    int updateStatusByOwnerId(
+            @Param("ownerId") Long ownerId,
+            @Param("status") EquipmentStatus status,
+            @Param("updatedAt") LocalDateTime updatedAt
+    );
 }

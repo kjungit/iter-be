@@ -1,5 +1,7 @@
 package com.example.iter.reservation.service;
 
+import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
@@ -84,6 +86,7 @@ class RentalServiceTest {
     @Test
     void 대여_요청_생성시_일수와_총액을_계산한다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -130,6 +133,7 @@ class RentalServiceTest {
     @Test
     void 겹치는_예약이_있으면_요청할_수_없다() {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(true);
 
@@ -137,6 +141,28 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.RENTAL_PERIOD_CONFLICT);
+    }
+
+    @Test
+    void 정지된_회원은_새로운_대여를_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.SUSPENDED, UserStatus.ACTIVE);
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, request()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_SUSPENDED);
+    }
+
+    @Test
+    void 탈퇴한_소유자의_장비에는_새로운_대여를_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.DELETED);
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, request()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
     }
 
     @Test
@@ -185,6 +211,22 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.RESERVATION_CONFLICT);
+    }
+
+    private void mockParticipants(UserStatus renterStatus, UserStatus ownerStatus) {
+        when(userRepository.findWithLockById(2L))
+                .thenReturn(Optional.of(user(2L, renterStatus)));
+        when(userRepository.findWithLockById(99L))
+                .thenReturn(Optional.of(user(99L, ownerStatus)));
+    }
+
+    private User user(Long id, UserStatus status) {
+        return User.builder()
+                .id(id)
+                .email("user-" + id + "@example.com")
+                .name("테스트 회원")
+                .status(status)
+                .build();
     }
 
     @Test

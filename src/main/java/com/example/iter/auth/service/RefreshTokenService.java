@@ -100,6 +100,11 @@ public class RefreshTokenService {
                 .ifPresent(token -> token.revoke(LocalDateTime.now()));
     }
 
+    @Transactional
+    public void revokeAllByUserId(Long userId) {
+        refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now());
+    }
+
     private void validateRefreshToken(String rawRefreshToken) {
         TokenStatus status = jwtTokenProvider.validateRefreshToken(rawRefreshToken);
         if (status == TokenStatus.EXPIRED) {
