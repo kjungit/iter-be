@@ -56,9 +56,8 @@ public class NotificationService {
         notificationSseService.send(receiverId, NotificationResponse.from(notification));
 
         if (type.requiresEmail()) {
-            // mailService.send()는 @Async라 실제 발송 실패는 그 메서드 안에서 잡히지만, 스레드풀 큐가
-            // 가득 차서 작업 "제출" 자체가 거부되면 RejectedExecutionException이 이 호출부에서
-            // 동기적으로 튀어나온다 — 여기서도 못 잡으면 방금 저장한 Notification까지 롤백된다.
+            // mailService.send()는 @Async라 실제 발송 실패는 그 메서드 안에서 잡히지만 스레드풀 큐가 가득 차서 작업 "제출" 자체가 거부되면 RejectedExecutionException이 이 호출부에서 동기적으로 튀어나온다
+            // — 여기서도 못 잡으면 방금 저장한 Notification까지 롤백된다.
             try {
                 mailService.send(new MailMessage(receiverEmail, notificationProperties.mailFrom(), title, message));
             } catch (Exception e) {
