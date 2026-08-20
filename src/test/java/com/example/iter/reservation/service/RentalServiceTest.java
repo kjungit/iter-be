@@ -13,11 +13,15 @@ import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.dto.request.RentalCreateRequest;
+import com.example.iter.reservation.event.RentalApprovedEvent;
+import com.example.iter.reservation.event.RentalCanceledEvent;
+import com.example.iter.reservation.event.RentalRejectedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +46,8 @@ class RentalServiceTest {
     private UserRepository userRepository;
     @Mock
     private PaymentRepository paymentRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private RentalService rentalService;
@@ -148,6 +156,8 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -198,6 +208,7 @@ class RentalServiceTest {
         var response = rentalService.approveRental(10L, 99L, false);
 
         assertThat(response.status()).isEqualTo(RentalStatus.APPROVED);
+        verify(eventPublisher).publishEvent(new RentalApprovedEvent(10L));
     }
 
     @Test
@@ -232,5 +243,17 @@ class RentalServiceTest {
 
         assertThat(response.status()).isEqualTo(RentalStatus.REJECTED);
         assertThat(response.reason()).isEqualTo("일정이 겹칩니다.");
+        verify(eventPublisher).publishEvent(new RentalRejectedEvent(10L));
+    }
+
+    @Test
+    void 승인_전_취소하면_취소_이벤트를_발행한다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.PENDING)));
+        when(paymentRepository.findByRentalId(10L)).thenReturn(Optional.empty());
+
+        var response = rentalService.cancelRental(10L, 2L, false);
+
+        assertThat(response.status()).isEqualTo(RentalStatus.CANCELED);
+        verify(eventPublisher).publishEvent(new RentalCanceledEvent(10L));
     }
 }
