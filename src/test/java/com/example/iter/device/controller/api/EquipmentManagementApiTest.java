@@ -50,6 +50,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -199,7 +200,7 @@ class EquipmentManagementApiTest {
         assertThat(images).allMatch(image -> image.getObjectKey().startsWith(
                 "equipment/public/%d/".formatted(equipment.getId())));
         assertThat(imageUploadRepository.findAll()).allMatch(EquipmentImageUpload::isUsed);
-        keys.forEach(key -> verify(imageStorage).delete(key));
+        keys.forEach(key -> verify(imageStorage, timeout(1000)).delete(key));
     }
 
     @Test
@@ -248,7 +249,7 @@ class EquipmentManagementApiTest {
         assertThat(equipmentRepository.count()).isZero();
         assertThat(equipmentImageRepository.count()).isZero();
         assertThat(imageUploadRepository.findAll()).noneMatch(EquipmentImageUpload::isUsed);
-        verify(imageStorage).delete(firstImage.objectKey());
+        verify(imageStorage, timeout(1000)).delete(firstImage.objectKey());
     }
 
     @Test
@@ -369,7 +370,7 @@ class EquipmentManagementApiTest {
                 .andExpect(jsonPath("$[1].thumbnail").value(false));
 
         assertThat(imageUploadRepository.findAll()).allMatch(EquipmentImageUpload::isUsed);
-        verify(imageStorage).delete(newKey);
+        verify(imageStorage, timeout(1000)).delete(newKey);
     }
 
     @Test
@@ -434,7 +435,7 @@ class EquipmentManagementApiTest {
         EquipmentImage updated = equipmentImageRepository.findById(remaining.getId()).orElseThrow();
         assertThat(updated.isThumbnail()).isTrue();
         assertThat(updated.getSortOrder()).isZero();
-        verify(imageStorage).delete(thumbnail.getObjectKey());
+        verify(imageStorage, timeout(1000)).delete(thumbnail.getObjectKey());
     }
 
     @Test

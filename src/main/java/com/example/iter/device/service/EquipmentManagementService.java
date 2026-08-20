@@ -55,6 +55,7 @@ public class EquipmentManagementService {
     private final UserRepository userRepository;
     private final RentalRepository rentalRepository;
     private final EquipmentImageStorage imageStorage;
+    private final EquipmentImageCleanupService imageCleanupService;
     private final EquipmentImageUrlResolver imageUrlResolver;
 
     @Transactional
@@ -424,11 +425,15 @@ public class EquipmentManagementService {
             List<StoredImage> storedImages,
             List<String> temporaryObjectKeys
     ) {
+        List<String> temporaryKeys = List.copyOf(temporaryObjectKeys);
+        List<String> storedKeys = storedImages.stream()
+                .map(StoredImage::objectKey)
+                .toList();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                temporaryObjectKeys.forEach(objectKey -> deleteQuietly(
-                        objectKey, "사용 완료된 임시 장비 이미지 삭제 실패"));
+                imageCleanupService.deleteAll(
+                        temporaryKeys, "사용 완료된 임시 장비 이미지 삭제 실패");
             }
 
             @Override
@@ -436,8 +441,8 @@ public class EquipmentManagementService {
                 if (status == STATUS_COMMITTED) {
                     return;
                 }
-                storedImages.forEach(image -> deleteQuietly(
-                        image.objectKey(), "롤백된 최종 장비 이미지 삭제 실패"));
+                imageCleanupService.deleteAll(
+                        storedKeys, "롤백된 최종 장비 이미지 삭제 실패");
             }
         });
     }
@@ -449,16 +454,18 @@ public class EquipmentManagementService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                deleteQuietly(objectKey, "삭제된 장비 이미지 객체 정리 실패");
+                imageCleanupService.deleteAll(
+                        List.of(objectKey), "삭제된 장비 이미지 객체 정리 실패");
             }
         });
     }
 
-    private void deleteQuietly(String objectKey, String logMessage) {
+    // 승격 도중 실패한 객체는 요청 실패 전에 즉시 보상 삭제해야 하므로 동기로 처리합니다.
+    private void deleteQuietly(String objectKey, String failureMessage) {
         try {
             imageStorage.delete(objectKey);
         } catch (RuntimeException exception) {
-            log.error("{}: objectKey={}", logMessage, objectKey, exception);
+            log.error("{}: objectKey={}", failureMessage, objectKey, exception);
         }
     }
 }
