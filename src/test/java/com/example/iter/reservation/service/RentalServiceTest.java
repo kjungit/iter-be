@@ -289,13 +289,27 @@ class RentalServiceTest {
     }
 
     @Test
-    void 승인_전_취소하면_취소_이벤트를_발행한다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.PENDING)));
+    void REQUESTED_상태에서_취소하면_취소_이벤트를_발행한다() {
+        // owner는 REQUESTED(결제 완료) 시점에야 이 요청을 처음 알게 되므로,
+        // 그 이후 취소는 owner가 이미 아는 요청에 대한 취소라 알림 대상이다.
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(paymentRepository.findByRentalId(10L)).thenReturn(Optional.empty());
 
         var response = rentalService.cancelRental(10L, 2L, false);
 
         assertThat(response.status()).isEqualTo(RentalStatus.CANCELED);
         verify(eventPublisher).publishEvent(new RentalCanceledEvent(10L));
+    }
+
+    @Test
+    void PENDING_상태에서_취소하면_취소_이벤트를_발행하지_않는다() {
+        // owner는 결제 전(PENDING) 요청의 존재를 아직 모르므로, 취소 알림을 보내면 안 된다.
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.PENDING)));
+        when(paymentRepository.findByRentalId(10L)).thenReturn(Optional.empty());
+
+        var response = rentalService.cancelRental(10L, 2L, false);
+
+        assertThat(response.status()).isEqualTo(RentalStatus.CANCELED);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

@@ -34,14 +34,14 @@ public class InMemorySseEmitterRegistry implements SseEmitterRegistry {
 
     @Override
     public void remove(Long userId, SseEmitter emitter) {
-        List<SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters == null) {
-            return;
-        }
-        userEmitters.remove(emitter);
-        if (userEmitters.isEmpty()) {
-            emitters.remove(userId);
-        }
+        // get() 다음에 별도로 remove(userId)를 호출하면, 그 사이에 register()의 computeIfAbsent가
+        // 같은 키에 끼어들어 새 emitter를 추가한 리스트를 통째로 날려버릴 수 있다(리스트가 비었다고
+        // 판단한 시점과 실제로 맵에서 지우는 시점 사이의 TOCTOU). computeIfPresent는 같은 키에 대해
+        // register()의 computeIfAbsent와 동일한 락을 타므로, 검사와 제거를 원자적으로 묶어준다.
+        emitters.computeIfPresent(userId, (key, userEmitters) -> {
+            userEmitters.remove(emitter);
+            return userEmitters.isEmpty() ? null : userEmitters;
+        });
     }
 
     @Override

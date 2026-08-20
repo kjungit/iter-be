@@ -174,6 +174,10 @@ public class RentalService {
         if (rental.getStatus() != RentalStatus.PENDING && rental.getStatus() != RentalStatus.REQUESTED) {
             throw new CustomException(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
         }
+        // owner는 결제 완료(REQUESTED) 시점에야 이 요청의 존재를 처음 알게 된다.
+        // 아직 PENDING(결제 전)인 채로 취소되면 owner는 애초에 이 요청을 몰랐으므로,
+        // "취소했습니다" 알림을 보내면 존재도 몰랐던 요청에 대한 뜬금없는 알림이 된다.
+        boolean ownerWasNotified = rental.getStatus() == RentalStatus.REQUESTED;
 
         Payment payment = paymentRepository.findByRentalId(rentalId).orElse(null);
         if (payment != null && payment.getStatus() == PaymentStatus.PAID) {
@@ -181,7 +185,9 @@ public class RentalService {
         }
 
         rental.changeStatus(RentalStatus.CANCELED);
-        eventPublisher.publishEvent(new RentalCanceledEvent(rental.getId()));
+        if (ownerWasNotified) {
+            eventPublisher.publishEvent(new RentalCanceledEvent(rental.getId()));
+        }
 
         PaymentStatus paymentStatus = payment != null? payment.getStatus(): null;
 
