@@ -1,4 +1,4 @@
-package com.example.iter.common.config;
+gpackage com.example.iter.common.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +13,7 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class AsyncConfig {
 
-    // 메일 발송 전용 스레드풀 — 요청 처리 스레드나 다른 비동기 작업과 자원을 다투지 않도록 분리.
+    // 메일 발송 전용 스레드풀 — 요청 처리 스레드나 다른 비동기 작업과 자원을 다투지 않도록 분리
     @Bean(name = "mailExecutor")
     public Executor mailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
