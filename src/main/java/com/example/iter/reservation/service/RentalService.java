@@ -24,7 +24,11 @@ import com.example.iter.reservation.dto.response.RentalApproveResponse;
 import com.example.iter.reservation.dto.response.RentalDetailResponse;
 import com.example.iter.reservation.dto.response.RentalReceivedItemResponse;
 import com.example.iter.reservation.dto.response.RentalRejectResponse;
+import com.example.iter.reservation.event.RentalApprovedEvent;
+import com.example.iter.reservation.event.RentalCanceledEvent;
+import com.example.iter.reservation.event.RentalRejectedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,7 @@ public class RentalService {
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
     private final TossPaymentClient tossPaymentClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public RentalCreateResponse createRental(Long renterId, RentalCreateRequest request) {
@@ -163,6 +168,7 @@ public class RentalService {
         }
 
         rental.changeStatus(RentalStatus.CANCELED);
+        eventPublisher.publishEvent(new RentalCanceledEvent(rental.getId()));
 
         PaymentStatus paymentStatus = payment != null? payment.getStatus(): null;
 
@@ -203,6 +209,7 @@ public class RentalService {
         // 선점 방식(createRental 시점 락)이라 같은 기간에 REQUESTED가 동시에 여러 건 존재할 수 없어서
         // 예전처럼 "겹치는 다른 REQUESTED 자동 거절" 로직은 더 이상 필요 없다.
         rental.approve();
+        eventPublisher.publishEvent(new RentalApprovedEvent(rental.getId()));
 
         return RentalApproveResponse.from(rental);
     }
@@ -221,6 +228,7 @@ public class RentalService {
         }
 
         rejectAndRefund(rental, reason);
+        eventPublisher.publishEvent(new RentalRejectedEvent(rental.getId()));
 
         PaymentStatus paymentStatus = paymentRepository.findByRentalId(rentalId)
                 .map(Payment::getStatus)

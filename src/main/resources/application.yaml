@@ -10,6 +10,17 @@ spring:
       hibernate:
         format_sql: true
     open-in-view: false
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   security:
     oauth2:
       client:
@@ -41,6 +52,12 @@ jwt:
 toss:
   client-key: ${TOSS_CLIENT_KEY:test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq}
   secret-key: ${TOSS_SECRET_KEY:test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R}
+
+notification:
+  mail-from: ${MAIL_USERNAME:noreply@iter.example.com}
+  # Redis Pub/Sub 전환 시 SseEmitterRegistry 구현체만 교체하면 되도록 채널 키 규칙만 미리 정의.
+  # (지금은 단일 인스턴스라 인메모리로 구독을 관리하고, Redis 연동은 별도 작업으로 진행 예정)
+  redis-channel-prefix: "notification:user:"
 
 auth:
   refresh-cookie:

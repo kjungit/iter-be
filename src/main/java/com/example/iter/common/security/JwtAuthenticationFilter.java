@@ -26,6 +26,10 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    // 브라우저 EventSource는 커스텀 헤더를 못 실어 보내서 이 경로에 한해 쿼리 파라미터 토큰을 허용한다.
+    // (토큰이 URL에 남는 범위를 이 경로 하나로 최소화 — 액세스 토큰은 15분 만료라 노출 위험이 제한적)
+    private static final String SSE_SUBSCRIBE_PATH = "/api/v1/notifications/subscribe";
+
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
@@ -62,6 +66,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
+        }
+        if (SSE_SUBSCRIBE_PATH.equals(request.getRequestURI())) {
+            return request.getParameter("token");
         }
         return null;
     }

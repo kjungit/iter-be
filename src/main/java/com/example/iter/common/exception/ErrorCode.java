@@ -63,7 +63,10 @@ public enum ErrorCode {
     RESERVATION_CONFLICT(HttpStatus.CONFLICT, "이미 확정된 예약과 기간이 겹쳐 승인할 수 없습니다."),
     TOSS_PAYMENT_FAILED(HttpStatus.BAD_GATEWAY, "토스 결제 승인에 실패했습니다."),
     TOSS_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "결제 금액이 일치하지 않습니다."),
-    TOSS_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "주문 정보가 일치하지 않습니다.");
+    TOSS_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "주문 정보가 일치하지 않습니다."),
+
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다.");
 
     // TODO: delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
 
