@@ -4,9 +4,11 @@ import com.example.iter.common.dto.response.PageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.notification.dto.response.MarkAllReadResponse;
 import com.example.iter.notification.dto.response.NotificationResponse;
+import com.example.iter.notification.dto.response.SseTicketResponse;
 import com.example.iter.notification.dto.response.UnreadCountResponse;
 import com.example.iter.notification.service.NotificationService;
 import com.example.iter.notification.sse.NotificationSseService;
+import com.example.iter.notification.sse.SseTicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,8 +33,21 @@ public class NotificationApiController {
 
     private final NotificationService notificationService;
     private final NotificationSseService notificationSseService;
+    private final SseTicketService sseTicketService;
 
-    @Operation(summary = "실시간 알림 구독 (SSE)", security = @SecurityRequirement(name = "JWT"))
+    @Operation(
+            summary = "SSE 구독용 단발성 티켓 발급",
+            description = "브라우저 EventSource가 Authorization 헤더를 못 보내는 문제를 우회하기 위한 티켓. "
+                    + "60초 이내에 /subscribe에서 한 번만 쓸 수 있고, 쓰이는 즉시 무효화된다.",
+            security = @SecurityRequirement(name = "JWT")
+    )
+    @PostMapping("/sse-ticket")
+    public ResponseEntity<SseTicketResponse> issueSseTicket(@AuthenticationPrincipal CustomUserDetails principal) {
+        String ticket = sseTicketService.issue(principal.getUser().getId());
+        return ResponseEntity.ok(new SseTicketResponse(ticket));
+    }
+
+    @Operation(summary = "실시간 알림 구독 (SSE)", description = "쿼리 파라미터로 /sse-ticket에서 발급받은 ticket을 전달한다.")
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@AuthenticationPrincipal CustomUserDetails principal) {
         return notificationSseService.subscribe(principal.getUser().getId());
