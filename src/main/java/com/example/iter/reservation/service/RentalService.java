@@ -1,6 +1,7 @@
 package com.example.iter.reservation.service;
 
 import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
 import com.example.iter.common.dto.response.PageResponse;
@@ -72,10 +73,18 @@ public class RentalService {
             throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
 
+        // 회원 탈퇴와 신규 대여 생성이 서로 같은 사용자 행 락에 참여하도록 한다.
+        // 두 사용자를 항상 ID 오름차순으로 잠가 서로 상대방 장비를 동시에 대여할 때의 데드락도 줄인다.
+        lockAndValidateRentalParticipants(renterId, equipment.getOwnerId());
+
         // 같은 장비에 대한 동시 요청을 직렬화하기 위해 락을 잡고 재조회 — 선점 방식이라
         // "겹치는지 확인"과 "저장"이 하나의 원자적 구간이어야 두 명이 동시에 같은 기간을 통과시키지 못한다.
         equipment = equipmentRepository.findByIdForUpdate(equipment.getId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+        if (!equipment.isActive()) {
+            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+        }
 
         if (rentalRepository.existsConflictingActiveRental(equipment.getId(), startDate, endDate)) {
             throw new CustomException(ErrorCode.RENTAL_PERIOD_CONFLICT);
@@ -258,6 +267,30 @@ public class RentalService {
     private Rental getRentalOrThrow(Long rentalId) {
         return rentalRepository.findById(rentalId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RENTAL_NOT_FOUND));
+    }
+
+    private void lockAndValidateRentalParticipants(Long renterId, Long ownerId) {
+        Long firstId = Math.min(renterId, ownerId);
+        Long secondId = Math.max(renterId, ownerId);
+        User first = findUserWithLock(firstId);
+        User second = findUserWithLock(secondId);
+        User renter = first.getId().equals(renterId) ? first : second;
+        User owner = first.getId().equals(ownerId) ? first : second;
+
+        if (renter.getStatus() == UserStatus.SUSPENDED) {
+            throw new CustomException(ErrorCode.USER_SUSPENDED);
+        }
+        if (renter.getStatus() == UserStatus.DELETED) {
+            throw new CustomException(ErrorCode.USER_DELETED);
+        }
+        if (!owner.isActive()) {
+            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+        }
+    }
+
+    private User findUserWithLock(Long userId) {
+        return userRepository.findWithLockById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     private int overdueDays(Rental rental) {
