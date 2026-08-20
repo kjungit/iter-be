@@ -7,12 +7,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface RentalRepository extends JpaRepository<Rental, Long> {
@@ -28,26 +30,11 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     )
     Page<Rental> findReceivedRentals( @Param("ownerId") Long ownerId, @Param("status") RentalStatus status, Pageable pageable );
 
-    /**
-     * 승인(#6) 전용 — 같은 장비·겹치는 기간의 다른 REQUESTED 예약들.
-     * approve 트랜잭션 안에서 이 목록을 자동 거절+환불 처리한다.
-     */
-    @Query(
-            "SELECT r FROM Rental r " +
-            "WHERE r.equipmentId = :equipmentId " +
-            "AND r.id <> :excludeRentalId " +
-            "AND r.status = RentalStatus.REQUESTED " +
-            "AND r.startDate <= :endDate " +
-            "AND r.endDate >= :startDate"
-    )
-    List<Rental> findOverlappingRequestedRentals(
-            @Param("equipmentId") Long equipmentId,
-            @Param("excludeRentalId") Long excludeRentalId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-                                                );
-
-    // TODO: 기간 겹침 검증 쿼리(동일 equipmentId + 기간 겹침 + 상태 REQUESTED 이상) — 낙관적 락(@Version) 적용과 함께 담당자가 추가
+    // 결제(#3)를 30분 안에 완료하지 않은 PENDING 요청을 자동 취소해서 선점을 풀어준다.
+    @Modifying
+    @Query("UPDATE Rental r SET r.status = RentalStatus.CANCELED " +
+            "WHERE r.status = RentalStatus.PENDING AND r.createdAt < :cutoff")
+    int expirePendingRentals(@Param("cutoff") LocalDateTime cutoff);
 
      // 해당 회원이 대여자인 성립된 거래 수를 조회합니다.
     long countByRenterIdAndStatusIn(Long renterId, Collection<RentalStatus> statuses);
@@ -93,10 +80,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     // 동일 거래의 반납 최종 확인이 동시에 처리되지 않도록 거래 행을 비관적 쓰기 락으로 조회합니다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Rental> findWithLockById(Long rentalId);
-    /**
-     * 대여 요청 생성시 선택한 기간에 이미 확정된 예약이 있는지 체크
-     * - 점유 기준 : APPROVED부터 DISPUTED까지이며 종료된 COMPLETED는 기간을 점유하지 않습니다.
-     */
+    /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약이 있는지 확인합니다. */
     @Query(
             "SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
             "FROM Rental r " +

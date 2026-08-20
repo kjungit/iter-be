@@ -8,8 +8,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RentalConflictPolicyTest {
 
     @Test
-    void 승인_전과_거절_취소_완료_상태는_기간을_점유하지_않는다() {
+    void 거절_취소_완료_상태는_기간을_점유하지_않는다() {
         assertThat(RentalConflictPolicy.nonOccupyingStatuses())
+                .containsExactlyInAnyOrder(
+                        RentalStatus.REJECTED,
+                        RentalStatus.CANCELED,
+                        RentalStatus.COMPLETED
+                );
+    }
+
+    @Test
+    void 승인되지_않은_상태는_확정_예약으로_보지_않는다() {
+        assertThat(RentalConflictPolicy.nonConfirmedStatuses())
+                .containsExactlyInAnyOrder(
+                        RentalStatus.PENDING,
+                        RentalStatus.REQUESTED,
+                        RentalStatus.REJECTED,
+                        RentalStatus.CANCELED
+                );
+    }
+
+    @Test
+    void 승인_전과_종료된_상태는_확정_예약_일정에_노출하지_않는다() {
+        assertThat(RentalConflictPolicy.nonScheduledStatuses())
                 .containsExactlyInAnyOrder(
                         RentalStatus.PENDING,
                         RentalStatus.REQUESTED,

@@ -1,8 +1,6 @@
 package com.example.iter.common.exception;
 
 import com.example.iter.common.response.ErrorResponse;
-import com.example.iter.payment.dto.response.PointInsufficientErrorResponse;
-import com.example.iter.payment.exception.PointInsufficientException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -10,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -64,6 +63,17 @@ public class GlobalExceptionHandler {
                         ErrorCode.VALIDATION_ERROR.getMessage()));
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        log.warn("요청 본문을 읽을 수 없음: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.from(
+                        ErrorCode.VALIDATION_ERROR.name(),
+                        ErrorCode.VALIDATION_ERROR.getMessage()
+                ));
+    }
+
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
             HttpMediaTypeNotSupportedException e
@@ -75,15 +85,6 @@ public class GlobalExceptionHandler {
                         ErrorCode.UNSUPPORTED_MEDIA_TYPE.name(),
                         ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()
                 ));
-    }
-
-    // 포인트 부족 (B 담당) — message 외에 pointBalance/requiredAmount를 같이 내려줘야 해서 별도 예외/응답 타입으로 분리
-    @ExceptionHandler(PointInsufficientException.class)
-    public ResponseEntity<PointInsufficientErrorResponse> handlePointInsufficient(PointInsufficientException e) {
-        log.warn("PointInsufficient: balance={}, required={}", e.getPointBalance(), e.getRequiredAmount());
-        return ResponseEntity
-                .status(ErrorCode.POINT_INSUFFICIENT.getStatus())
-                .body(PointInsufficientErrorResponse.of(e.getMessage(), e.getPointBalance(), e.getRequiredAmount()));
     }
 
     // 인가 실패 (소유권 없음, 권한 부족 등 — @PreAuthorize에서 발생)

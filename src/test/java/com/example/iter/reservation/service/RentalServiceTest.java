@@ -1,5 +1,7 @@
 package com.example.iter.reservation.service;
 
+import com.example.iter.auth.domain.entity.User;
+import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
@@ -21,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +63,7 @@ class RentalServiceTest {
     }
 
     private RentalCreateRequest request() {
-        return new RentalCreateRequest(1L, LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 25),
+        return new RentalCreateRequest(1L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
     }
 
@@ -84,6 +85,8 @@ class RentalServiceTest {
 
     @Test
     void 대여_요청_생성시_일수와_총액을_계산한다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -96,7 +99,7 @@ class RentalServiceTest {
 
     @Test
     void 본인_장비는_대여할_수_없다() {
-        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(2L)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(2L)));
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -106,8 +109,7 @@ class RentalServiceTest {
 
     @Test
     void ACTIVE_상태가_아닌_장비는_대여할_수_없다() {
-        when(equipmentRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(equipment(99L, EquipmentStatus.MAINTENANCE)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L, EquipmentStatus.MAINTENANCE)));
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -117,7 +119,7 @@ class RentalServiceTest {
 
     @Test
     void 시작일이_오늘이거나_과거면_요청할_수_없다() {
-        when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         RentalCreateRequest todayRequest = new RentalCreateRequest(1L,
                 LocalDate.now(), LocalDate.now().plusDays(5),
                 "홍길동", "010-0000-0000", "12345", "서울시", "101동", "문 앞", true);
@@ -129,7 +131,9 @@ class RentalServiceTest {
     }
 
     @Test
-    void 겹치는_확정_예약이_있으면_요청할_수_없다() {
+    void 겹치는_예약이_있으면_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
@@ -137,6 +141,28 @@ class RentalServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.RENTAL_PERIOD_CONFLICT);
+    }
+
+    @Test
+    void 정지된_회원은_새로운_대여를_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.SUSPENDED, UserStatus.ACTIVE);
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, request()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_SUSPENDED);
+    }
+
+    @Test
+    void 탈퇴한_소유자의_장비에는_새로운_대여를_요청할_수_없다() {
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
+        mockParticipants(UserStatus.ACTIVE, UserStatus.DELETED);
+
+        assertThatThrownBy(() -> rentalService.createRental(2L, request()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
     }
 
     @Test
@@ -187,21 +213,33 @@ class RentalServiceTest {
                 .isEqualTo(ErrorCode.RESERVATION_CONFLICT);
     }
 
+    private void mockParticipants(UserStatus renterStatus, UserStatus ownerStatus) {
+        when(userRepository.findWithLockById(2L))
+                .thenReturn(Optional.of(user(2L, renterStatus)));
+        when(userRepository.findWithLockById(99L))
+                .thenReturn(Optional.of(user(99L, ownerStatus)));
+    }
+
+    private User user(Long id, UserStatus status) {
+        return User.builder()
+                .id(id)
+                .email("user-" + id + "@example.com")
+                .name("테스트 회원")
+                .status(status)
+                .build();
+    }
+
     @Test
-    void 충돌이_없으면_승인되고_경쟁하는_REQUESTED_예약은_자동_거절된다() {
+    void 충돌이_없으면_승인된다() {
         Rental target = rental(10L, RentalStatus.REQUESTED);
-        Rental competitor = rental(11L, RentalStatus.REQUESTED);
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
         when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
-        when(rentalRepository.findOverlappingRequestedRentals(anyLong(), anyLong(), any(), any()))
-                .thenReturn(List.of(competitor));
 
         var response = rentalService.approveRental(10L, 99L, false);
 
         assertThat(response.status()).isEqualTo(RentalStatus.APPROVED);
-        assertThat(competitor.getStatus()).isEqualTo(RentalStatus.REJECTED);
     }
 
     @Test

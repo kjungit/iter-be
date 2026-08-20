@@ -78,7 +78,7 @@ class EquipmentQueryApiTest {
     }
 
     @Test
-    void 검색_가격_카테고리_기간을_필터링하고_확정_예약과_겹치는_장비는_제외한다() throws Exception {
+    void 검색_가격_카테고리_기간을_필터링하고_선점_예약과_겹치는_장비는_제외한다() throws Exception {
         LocalDate startDate = LocalDate.now().plusDays(10);
         LocalDate endDate = startDate.plusDays(3);
         Equipment available = saveEquipment("소니 카메라", EquipmentCategory.CAMERA, 30_000,
@@ -99,10 +99,9 @@ class EquipmentQueryApiTest {
                         .param("endDate", endDate.toString())
                         .param("sort", "PRICE_ASC"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].id").value(available.getId()))
-                .andExpect(jsonPath("$.content[1].id").value(requested.getId()))
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
@@ -135,6 +134,56 @@ class EquipmentQueryApiTest {
     }
 
     @Test
+    void 검색어의_LIKE_특수문자는_와일드카드가_아닌_문자_그대로_검색한다() throws Exception {
+        Equipment percent = saveEquipment("할인율 100% 카메라", EquipmentCategory.CAMERA, 10_000,
+                EquipmentStatus.ACTIVE);
+        Equipment underscore = saveEquipment("제품_A 카메라", EquipmentCategory.CAMERA, 20_000,
+                EquipmentStatus.ACTIVE);
+        Equipment backslash = saveEquipment("경로\\카메라", EquipmentCategory.CAMERA, 25_000,
+                EquipmentStatus.ACTIVE);
+        saveEquipment("일반 카메라", EquipmentCategory.CAMERA, 30_000, EquipmentStatus.ACTIVE);
+
+        mockMvc.perform(get("/api/v1/devices").param("keyword", "%"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(percent.getId()));
+
+        mockMvc.perform(get("/api/v1/devices").param("keyword", "_"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(underscore.getId()));
+
+        mockMvc.perform(get("/api/v1/devices").param("keyword", "\\"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(backslash.getId()));
+    }
+
+    @Test
+    void 과거_오늘_동일한_시작종료일은_검색조건으로_허용하지_않는다() throws Exception {
+        LocalDate today = LocalDate.now();
+
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("startDate", today.minusDays(1).toString())
+                        .param("endDate", today.plusDays(1).toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("startDate", today.toString())
+                        .param("endDate", today.plusDays(1).toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        LocalDate futureDate = today.plusDays(1);
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("startDate", futureDate.toString())
+                        .param("endDate", futureDate.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     void 잘못된_검색조건과_enum은_400을_반환한다() throws Exception {
         mockMvc.perform(get("/api/v1/devices")
                         .param("minPrice", "50000")
@@ -147,7 +196,7 @@ class EquipmentQueryApiTest {
                         .param("startDate", LocalDate.now().toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("대여 시작일과 종료일을 함께 올바르게 입력해주세요."));
+                .andExpect(jsonPath("$.message").value("대여 시작일은 오늘 이후이고 종료일은 시작일 이후여야 합니다."));
 
         mockMvc.perform(get("/api/v1/devices").param("category", "UNKNOWN"))
                 .andExpect(status().isBadRequest())

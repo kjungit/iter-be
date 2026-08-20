@@ -45,11 +45,14 @@ public record EquipmentSearchRequest(
         return minPrice == null || maxPrice == null || minPrice.compareTo(maxPrice) <= 0;
     }
 
-    @AssertTrue(message = "대여 시작일과 종료일을 함께 올바르게 입력해주세요.")
+    @AssertTrue(message = "대여 시작일은 오늘 이후이고 종료일은 시작일 이후여야 합니다.")
     public boolean isValidRentalPeriod() {
         if (startDate == null && endDate == null) {
             return true;
         }
-        return startDate != null && endDate != null && !startDate.isAfter(endDate);
+        return startDate != null
+                && endDate != null
+                && startDate.isAfter(LocalDate.now())
+                && startDate.isBefore(endDate);
     }
 }

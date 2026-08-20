@@ -79,7 +79,7 @@ public class EquipmentQueryService {
         AvailabilityReason reason = findUnavailabilityReason(
                 equipment, request.startDate(), request.endDate());
         if (reason != null) {
-            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+            throw new CustomException(ErrorCode.EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE);
         }
 
         int rentalDays = Math.toIntExact(
@@ -156,7 +156,7 @@ public class EquipmentQueryService {
 
     public EquipmentListResponse getEquipmentList(EquipmentSearchRequest request) {
         Page<EquipmentSearchRow> rows = equipmentRepository.searchPublicEquipment(
-                request.keyword(),
+                escapeLikePattern(request.keyword()),
                 request.category(),
                 request.minPrice(),
                 request.maxPrice(),
@@ -228,7 +228,7 @@ public class EquipmentQueryService {
                         equipmentId,
                         request.from(),
                         request.to(),
-                        RentalConflictPolicy.nonOccupyingStatuses())
+                        RentalConflictPolicy.nonScheduledStatuses())
                 .stream()
                 .map(RentalScheduleItemResponse::from)
                 .toList();
@@ -267,5 +267,15 @@ public class EquipmentQueryService {
                 row.averageRating(),
                 row.reviewCount()
         );
+    }
+
+    private String escapeLikePattern(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

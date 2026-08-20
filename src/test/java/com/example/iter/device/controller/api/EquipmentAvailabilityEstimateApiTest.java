@@ -77,7 +77,7 @@ class EquipmentAvailabilityEstimateApiTest {
 
     @ParameterizedTest
     @EnumSource(value = RentalStatus.class, names = {
-            "APPROVED", "SHIPPING", "RECEIVED", "RENTING",
+            "PENDING", "REQUESTED", "APPROVED", "SHIPPING", "RECEIVED", "RENTING",
             "RETURN_REQUESTED", "RETURNING", "RETURNED", "DISPUTED"
     })
     void 점유_예약과_겹치면_대여_불가를_반환한다(RentalStatus status) throws Exception {
@@ -94,7 +94,7 @@ class EquipmentAvailabilityEstimateApiTest {
 
     @ParameterizedTest
     @EnumSource(value = RentalStatus.class, names = {
-            "PENDING", "REQUESTED", "REJECTED", "CANCELED", "COMPLETED"
+            "REJECTED", "CANCELED", "COMPLETED"
     })
     void 비점유_예약은_대여_가능_여부를_막지_않는다(RentalStatus status) throws Exception {
         Equipment equipment = saveEquipment(EquipmentStatus.ACTIVE);
@@ -133,7 +133,7 @@ class EquipmentAvailabilityEstimateApiTest {
 
         mockMvc.perform(estimateRequest(equipment, startDate, endDate))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE"))
                 .andExpect(jsonPath("$.message")
                         .value("선택한 기간에는 장비를 대여할 수 없습니다."));
 
@@ -142,7 +142,7 @@ class EquipmentAvailabilityEstimateApiTest {
                         LocalDate.now().plusDays(29),
                         LocalDate.now().plusDays(31)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_AVAILABLE"));
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE"));
     }
 
     @ParameterizedTest
