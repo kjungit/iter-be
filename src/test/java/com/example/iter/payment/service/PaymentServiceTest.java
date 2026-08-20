@@ -10,6 +10,7 @@ import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.PaymentRepository;
 import com.example.iter.payment.dto.request.PaymentConfirmRequest;
 import com.example.iter.payment.dto.toss.TossConfirmApiResponse;
+import com.example.iter.payment.event.PaymentConfirmedEvent;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,11 +43,13 @@ class PaymentServiceTest {
     private TossPaymentClient tossPaymentClient;
     @Mock
     private PaymentFailureRecorder paymentFailureRecorder;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private final TossProperties tossProperties = new TossProperties("test_ck_docs", "test_sk_docs");
 
     private PaymentService paymentService() {
-        return new PaymentService(rentalRepository, paymentRepository, tossPaymentClient, tossProperties, paymentFailureRecorder);
+        return new PaymentService(rentalRepository, paymentRepository, tossPaymentClient, tossProperties, paymentFailureRecorder, eventPublisher);
     }
 
     private Rental pendingRental() {
@@ -100,6 +104,7 @@ class PaymentServiceTest {
         assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getPaymentKey()).isEqualTo("payKey");
         assertThat(rental.getStatus()).isEqualTo(RentalStatus.REQUESTED);
+        verify(eventPublisher).publishEvent(new PaymentConfirmedEvent(10L));
     }
 
     @Test
@@ -165,5 +170,6 @@ class PaymentServiceTest {
                 .isEqualTo(ErrorCode.TOSS_PAYMENT_FAILED);
         verify(paymentFailureRecorder).recordFailure(payment.getId());
         assertThat(rental.getStatus()).isEqualTo(RentalStatus.PENDING);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

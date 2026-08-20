@@ -12,10 +12,12 @@ import com.example.iter.payment.dto.request.PaymentConfirmRequest;
 import com.example.iter.payment.dto.response.PaymentConfirmResponse;
 import com.example.iter.payment.dto.response.PaymentReadyResponse;
 import com.example.iter.payment.dto.toss.TossConfirmApiResponse;
+import com.example.iter.payment.event.PaymentConfirmedEvent;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class PaymentService {
     private final TossPaymentClient tossPaymentClient;
     private final TossProperties tossProperties;
     private final PaymentFailureRecorder paymentFailureRecorder;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public PaymentReadyResponse ready( Long rentalId, Long renterId) {
@@ -88,6 +91,7 @@ public class PaymentService {
         }
 
         rental.changeStatus(RentalStatus.REQUESTED);
+        eventPublisher.publishEvent(new PaymentConfirmedEvent(rental.getId()));
         return PaymentConfirmResponse.of(rental, payment);
     }
 
