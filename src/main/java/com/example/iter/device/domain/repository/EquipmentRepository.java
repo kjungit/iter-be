@@ -2,6 +2,7 @@ package com.example.iter.device.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
+import com.example.iter.device.service.model.EquipmentDetailRow;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import jakarta.persistence.LockModeType;
@@ -18,6 +19,20 @@ import java.time.LocalDate;
 import java.util.Collection;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
+
+    @Query("""
+            select new com.example.iter.device.service.model.EquipmentDetailRow(
+                e,
+                coalesce(avg(r.rating), 0.0),
+                count(r.id)
+            )
+            from Equipment e
+            left join Review r on r.equipment = e
+            where e.id = :equipmentId
+              and e.status = EquipmentStatus.ACTIVE
+            group by e
+            """)
+    Optional<EquipmentDetailRow> findPublicDetailById(@Param("equipmentId") Long equipmentId);
 
     @Query(
             value = """
