@@ -152,6 +152,46 @@ class UserRepositoryAdminTest {
     }
 
     @Test
+    void 퍼센트와_언더스코어를_와일드카드가_아닌_실제_문자로_검색한다() {
+        User percentMatch = userRepository.saveAndFlush(user(
+                "percent@iter.test",
+                "할인%회원",
+                "percent",
+                UserStatus.ACTIVE
+        ));
+        User underscoreMatch = userRepository.saveAndFlush(user(
+                "underscore@iter.test",
+                "언더_회원",
+                "underscore",
+                UserStatus.ACTIVE
+        ));
+        userRepository.saveAndFlush(user(
+                "plain@iter.test",
+                "일반 회원",
+                "plain",
+                UserStatus.ACTIVE
+        ));
+
+        var percentResult = userRepository.searchForAdmin(
+                "%",
+                null,
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+        var underscoreResult = userRepository.searchForAdmin(
+                "_",
+                null,
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(percentResult.getContent())
+                .extracting(User::getId)
+                .containsExactly(percentMatch.getId());
+        assertThat(underscoreResult.getContent())
+                .extracting(User::getId)
+                .containsExactly(underscoreMatch.getId());
+    }
+
+    @Test
     void 회원_상태_변경용_조회는_비관적_쓰기_락을_획득한다() {
         User saved = userRepository.saveAndFlush(user(
                 "locked@iter.test",

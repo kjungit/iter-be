@@ -26,6 +26,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * 상태가 null이면 전체 상태를 조회하고, 검색어가 null이면 검색 조건을 적용하지 않습니다.
      * 검색어가 있으면 이메일·이름·닉네임에 검색어가 포함된 회원을 대소문자 구분 없이 조회합니다.
+     * LOCATE를 사용해 %, _를 와일드카드가 아닌 실제 검색 문자로 처리합니다.
      * 상태와 검색어가 모두 있으면 두 조건을 모두 만족하는 회원을 페이지 단위로 반환합니다.
      */
     @Query("""
@@ -34,10 +35,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
         where (:status is null or u.status = :status)
           and (
                 :keyword is null
-                or lower(u.email) like lower(concat('%', :keyword, '%'))
-                or lower(u.name) like lower(concat('%', :keyword, '%'))
-                or lower(coalesce(u.nickname, ''))
-                    like lower(concat('%', :keyword, '%'))
+                or locate(lower(:keyword), lower(u.email)) > 0
+                or locate(lower(:keyword), lower(u.name)) > 0
+                or locate(lower(:keyword), lower(coalesce(u.nickname, ''))) > 0
               )
         """)
     Page<User> searchForAdmin(@Param("keyword") String keyword, @Param("status") UserStatus status, Pageable pageable);
