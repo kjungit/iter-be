@@ -49,4 +49,22 @@ public class Report extends BaseTimeEntity {
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
+
+
+    // 관리자가 신고 상태와 처리 메모를 변경합니다. 해결 또는 기각 상태에서는 처리 완료 시각을 저장합니다.
+    public void changeStatusByAdmin(
+            ReportStatus status,
+            String adminMemo,
+            LocalDateTime processedAt
+    ) {
+        this.status = status;
+        this.adminMemo = adminMemo;
+
+        if (status == ReportStatus.RESOLVED || status == ReportStatus.REJECTED) {
+            this.resolvedAt = processedAt;
+            return;
+        }
+
+        this.resolvedAt = null;
+    }
 }

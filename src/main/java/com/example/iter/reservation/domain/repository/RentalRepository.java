@@ -29,25 +29,6 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     )
     Page<Rental> findReceivedRentals( @Param("ownerId") Long ownerId, @Param("status") RentalStatus status, Pageable pageable );
 
-    /**
-     * 대여 요청 생성(#1) 전용 — 선점 방식: REJECTED/CANCELED를 제외한 모든 상태(PENDING/REQUESTED 포함)와
-     * 겹치는지 확인한다. 새로 만드는 요청이라 자기 자신을 제외할 필요가 없다.
-     * createRental()에서 Equipment 락을 잡은 뒤 호출해야 동시 요청 레이스가 막힌다.
-     */
-    @Query(
-            "SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
-            "FROM Rental r " +
-            "WHERE r.equipmentId = :equipmentId " +
-            "AND r.status NOT IN (RentalStatus.REJECTED, RentalStatus.CANCELED) " +
-            "AND r.startDate <= :endDate " +
-            "AND r.endDate >= :startDate"
-    )
-    boolean existsConflictingActiveRental(
-            @Param("equipmentId") Long equipmentId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-                                          );
-
     // 결제(#3)를 30분 안에 완료하지 않은 PENDING 요청을 자동 취소해서 선점을 풀어준다.
     @Modifying
     @Query("UPDATE Rental r SET r.status = RentalStatus.CANCELED " +
@@ -98,10 +79,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     // 동일 거래의 반납 최종 확인이 동시에 처리되지 않도록 거래 행을 비관적 쓰기 락으로 조회합니다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Rental> findWithLockById(Long rentalId);
-    /**
-     * 대여 요청 생성시 선택한 기간에 이미 확정된 예약이 있는지 체크
-     * - 확정 기준 : PENDING(결제 대기)/REQUESTED(승인 대기)/REJECTED/CANCELED를 제외한 나머지 상태
-     */
+    /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약이 있는지 확인합니다. */
     @Query(
             "SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
             "FROM Rental r " +
@@ -110,7 +88,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             "AND r.startDate <= :endDate " +
             "AND r.endDate >= :startDate"
     )
-    boolean existsConflictingConfirmedRental(
+    boolean existsConflictingOccupyingRental(
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
