@@ -5,20 +5,31 @@ import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
+import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentStatus;
+import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
+import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
+import com.example.iter.device.dto.response.AvailabilityReason;
+import com.example.iter.device.dto.response.EquipmentAvailabilityResponse;
 import com.example.iter.device.dto.response.EquipmentDetailResponse;
+import com.example.iter.device.dto.response.EquipmentEstimateResponse;
 import com.example.iter.device.dto.response.EquipmentImageResponse;
 import com.example.iter.device.dto.response.EquipmentListResponse;
 import com.example.iter.device.dto.response.EquipmentOwnerResponse;
 import com.example.iter.device.dto.response.EquipmentSummaryResponse;
 import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
+import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +42,49 @@ public class EquipmentQueryService {
     private final EquipmentRepository equipmentRepository;
     private final EquipmentImageRepository equipmentImageRepository;
     private final UserRepository userRepository;
+    private final RentalRepository rentalRepository;
+
+    public EquipmentAvailabilityResponse getEquipmentAvailability(
+            Long equipmentId,
+            EquipmentAvailabilityRequest request
+    ) {
+        Equipment equipment = findPublicEquipment(equipmentId);
+        AvailabilityReason reason = findUnavailabilityReason(
+                equipment, request.startDate(), request.endDate());
+
+        return new EquipmentAvailabilityResponse(
+                equipmentId,
+                request.startDate(),
+                request.endDate(),
+                reason == null,
+                reason
+        );
+    }
+
+    public EquipmentEstimateResponse getEquipmentEstimate(
+            Long equipmentId,
+            EquipmentEstimateRequest request
+    ) {
+        Equipment equipment = findPublicEquipment(equipmentId);
+        AvailabilityReason reason = findUnavailabilityReason(
+                equipment, request.startDate(), request.endDate());
+        if (reason != null) {
+            throw new CustomException(ErrorCode.EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE);
+        }
+
+        int rentalDays = Math.toIntExact(
+                ChronoUnit.DAYS.between(request.startDate(), request.endDate()) + 1);
+        BigDecimal totalPrice = equipment.getDailyPrice().multiply(BigDecimal.valueOf(rentalDays));
+
+        return new EquipmentEstimateResponse(
+                equipmentId,
+                request.startDate(),
+                request.endDate(),
+                rentalDays,
+                equipment.getDailyPrice(),
+                totalPrice
+        );
+    }
 
     public EquipmentDetailResponse getEquipmentDetail(Long equipmentId) {
         var row = equipmentRepository.findPublicDetailById(equipmentId)
@@ -63,6 +117,32 @@ public class EquipmentQueryService {
         );
     }
 
+    private Equipment findPublicEquipment(Long equipmentId) {
+        return equipmentRepository.findByIdAndStatus(equipmentId, EquipmentStatus.ACTIVE)
+                .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
+    }
+
+    private AvailabilityReason findUnavailabilityReason(
+            Equipment equipment,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        if (equipment.getAvailableFrom() == null
+                || equipment.getAvailableTo() == null
+                || startDate.isBefore(equipment.getAvailableFrom())
+                || endDate.isAfter(equipment.getAvailableTo())) {
+            return AvailabilityReason.OUT_OF_AVAILABLE_PERIOD;
+        }
+
+        boolean conflict = rentalRepository.existsConflictingOccupyingRental(
+                equipment.getId(),
+                startDate,
+                endDate,
+                RentalConflictPolicy.nonOccupyingStatuses()
+        );
+        return conflict ? AvailabilityReason.RESERVATION_CONFLICT : null;
+    }
+
     public EquipmentListResponse getEquipmentList(EquipmentSearchRequest request) {
         Page<EquipmentSearchRow> rows = equipmentRepository.searchPublicEquipment(
                 escapeLikePattern(request.keyword()),
@@ -71,7 +151,7 @@ public class EquipmentQueryService {
                 request.maxPrice(),
                 request.startDate(),
                 request.endDate(),
-                RentalConflictPolicy.nonConfirmedStatuses(),
+                RentalConflictPolicy.nonOccupyingStatuses(),
                 request.sort().name(),
                 PageRequest.of(request.page(), request.size())
         );

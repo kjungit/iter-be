@@ -86,7 +86,11 @@ public class RentalService {
             throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
         }
 
-        if (rentalRepository.existsConflictingActiveRental(equipment.getId(), startDate, endDate)) {
+        if (rentalRepository.existsConflictingOccupyingRental(
+                equipment.getId(),
+                startDate,
+                endDate,
+                RentalConflictPolicy.nonOccupyingStatuses())) {
             throw new CustomException(ErrorCode.RENTAL_PERIOD_CONFLICT);
         }
 
@@ -200,7 +204,7 @@ public class RentalService {
         }
 
         // 2) 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
-        if (rentalRepository.existsConflictingConfirmedRental(
+        if (rentalRepository.existsConflictingOccupyingRental(
                 equipment.getId(),
                 rental.getStartDate(),
                 rental.getEndDate(),

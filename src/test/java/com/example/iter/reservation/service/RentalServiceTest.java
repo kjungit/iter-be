@@ -88,7 +88,7 @@ class RentalServiceTest {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(false);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = rentalService.createRental(2L, request());
@@ -135,7 +135,7 @@ class RentalServiceTest {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingActiveRental(anyLong(), any(), any())).thenReturn(true);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -205,7 +205,7 @@ class RentalServiceTest {
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
                 .isInstanceOf(CustomException.class)
@@ -235,7 +235,7 @@ class RentalServiceTest {
         when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingConfirmedRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
 
         var response = rentalService.approveRental(10L, 99L, false);
 

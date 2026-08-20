@@ -41,6 +41,7 @@ public enum ErrorCode {
     EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 조회할 수 없는 장비입니다."),
     EQUIPMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인 소유의 장비가 아닙니다."),
     EQUIPMENT_NOT_AVAILABLE(HttpStatus.CONFLICT, "대여할 수 없는 상태의 장비입니다."),
+    EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE(HttpStatus.CONFLICT, "선택한 기간에는 장비를 대여할 수 없습니다."),
 
     // Admin (C)
     ADMIN_SUSPENSION_NOT_ALLOWED(HttpStatus.FORBIDDEN,"관리자 계정은 정지할 수 없습니다."),
