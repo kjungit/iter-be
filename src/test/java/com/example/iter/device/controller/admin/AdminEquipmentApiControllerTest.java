@@ -11,6 +11,7 @@ import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.common.security.CustomUserDetailsService;
 import com.example.iter.common.security.JwtTokenProvider;
 import com.example.iter.device.domain.entity.EquipmentStatus;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.dto.request.AdminEquipmentSearchRequest;
 import com.example.iter.device.dto.request.AdminEquipmentStatusRequest;
@@ -91,7 +92,7 @@ class AdminEquipmentApiControllerTest {
         AdminEquipmentSummaryResponse summary = new AdminEquipmentSummaryResponse(
                 EQUIPMENT_ID,
                 "맥북 프로",
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 BigDecimal.valueOf(30000),
                 EquipmentStatus.ACTIVE,
                 new UserSummaryResponse(USER_ID, "등록자"),
@@ -111,6 +112,7 @@ class AdminEquipmentApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].equipmentId").value(EQUIPMENT_ID))
                 .andExpect(jsonPath("$.content[0].name").value("맥북 프로"))
+                .andExpect(jsonPath("$.content[0].category").value("LAPTOP"))
                 .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$.content[0].owner.userId").value(USER_ID))
                 .andExpect(jsonPath("$.totalElements").value(1));
@@ -135,6 +137,7 @@ class AdminEquipmentApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.equipmentId").value(EQUIPMENT_ID))
                 .andExpect(jsonPath("$.owner.userId").value(USER_ID))
+                .andExpect(jsonPath("$.category").value("LAPTOP"))
                 .andExpect(jsonPath("$.name").value("맥북 프로"))
                 .andExpect(jsonPath("$.images[0].imageId").value(100L))
                 .andExpect(jsonPath("$.images[0].thumbnail").value(true));
@@ -254,7 +257,7 @@ class AdminEquipmentApiControllerTest {
         return new AdminEquipmentDetailResponse(
                 EQUIPMENT_ID,
                 new UserSummaryResponse(USER_ID, "등록자"),
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "맥북 프로",
                 "테스트 장비",
                 BigDecimal.valueOf(30000),

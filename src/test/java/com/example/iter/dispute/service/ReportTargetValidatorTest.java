@@ -6,6 +6,7 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
@@ -207,7 +208,7 @@ class ReportTargetValidatorTest {
         return Equipment.builder()
                 .id(id)
                 .ownerId(ownerId)
-                .category("카메라")
+                .category(EquipmentCategory.CAMERA)
                 .name("테스트 장비")
                 .dailyPrice(java.math.BigDecimal.valueOf(30000))
                 .status(status)

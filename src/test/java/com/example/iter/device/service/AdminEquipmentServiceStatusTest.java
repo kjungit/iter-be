@@ -8,6 +8,7 @@ import com.example.iter.common.audit.service.AdminActionService;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
@@ -117,7 +118,7 @@ class AdminEquipmentServiceStatusTest {
         return Equipment.builder()
                 .id(EQUIPMENT_ID)
                 .ownerId(OWNER_ID)
-                .category("카메라")
+                .category(EquipmentCategory.CAMERA)
                 .name("테스트 장비")
                 .dailyPrice(BigDecimal.valueOf(10_000))
                 .status(status)

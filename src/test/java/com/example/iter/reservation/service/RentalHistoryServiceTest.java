@@ -8,6 +8,7 @@ import com.example.iter.common.dto.request.PagingRequest;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
@@ -451,7 +452,7 @@ class RentalHistoryServiceTest {
         return Equipment.builder()
                 .id(id)
                 .ownerId(ownerId)
-                .category("디지털기기")
+                .category(EquipmentCategory.OTHER)
                 .name(name)
                 .dailyPrice(BigDecimal.valueOf(99_999))
                 .status(EquipmentStatus.ACTIVE)

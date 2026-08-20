@@ -1,6 +1,7 @@
 package com.example.iter.reservation.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
@@ -217,7 +218,7 @@ class ReturnRepositoryTest {
     private Equipment equipment(Long ownerId, String name) {
         return Equipment.builder()
                 .ownerId(ownerId)
-                .category("노트북")
+                .category(EquipmentCategory.LAPTOP)
                 .name(name)
                 .dailyPrice(BigDecimal.valueOf(30000))
                 .build();

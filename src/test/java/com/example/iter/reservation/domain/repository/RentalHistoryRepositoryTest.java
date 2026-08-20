@@ -1,6 +1,7 @@
 package com.example.iter.reservation.domain.repository;
 
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentRepository;
@@ -253,7 +254,7 @@ class RentalHistoryRepositoryTest {
         return equipmentRepository.saveAndFlush(
                 Equipment.builder()
                         .ownerId(ownerId)
-                        .category("디지털기기")
+                        .category(EquipmentCategory.OTHER)
                         .name(name)
                         .description("테스트 장비")
                         .dailyPrice(BigDecimal.valueOf(20_000))

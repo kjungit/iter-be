@@ -1,6 +1,7 @@
 package com.example.iter.device.dto.response;
 
 import com.example.iter.auth.dto.response.UserSummaryResponse;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 
@@ -12,7 +13,7 @@ import java.util.List;
 public record AdminEquipmentDetailResponse(
         Long equipmentId,
         UserSummaryResponse owner,
-        String category,
+        EquipmentCategory category,
         String name,
         String description,
         BigDecimal dailyPrice,

@@ -10,6 +10,7 @@ import com.example.iter.common.audit.service.AdminActionService;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
@@ -146,6 +147,27 @@ class AdminEquipmentServiceTest {
         verify(userRepository, never()).findAllById(anyCollection());
         verify(equipmentImageRepository, never())
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(anyCollection());
+    }
+
+    @Test
+    void 특수문자_검색어를_변경하지_않고_저장소에_전달한다() {
+        when(equipmentRepository.searchForAdmin(
+                eq("%_"),
+                isNull(),
+                isNull(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        adminEquipmentService.getEquipments(
+                new AdminEquipmentSearchRequest("  %_  ", null, null, 0, 20)
+        );
+
+        verify(equipmentRepository).searchForAdmin(
+                eq("%_"),
+                isNull(),
+                isNull(),
+                any(Pageable.class)
+        );
     }
 
     @Test
@@ -315,7 +337,7 @@ class AdminEquipmentServiceTest {
         return Equipment.builder()
                 .id(id)
                 .ownerId(ownerId)
-                .category("LAPTOP")
+                .category(EquipmentCategory.LAPTOP)
                 .name(name)
                 .description("테스트 장비")
                 .dailyPrice(BigDecimal.valueOf(30000))

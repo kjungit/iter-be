@@ -3,6 +3,7 @@ package com.example.iter.auth.domain.repository;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.common.config.JpaConfig;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
@@ -143,7 +144,7 @@ class AdminUserAggregationRepositoryTest {
     private Equipment equipment(Long ownerId, String name) {
         return Equipment.builder()
                 .ownerId(ownerId)
-                .category("노트북")
+                .category(EquipmentCategory.LAPTOP)
                 .name(name)
                 .description("테스트 장비")
                 .dailyPrice(BigDecimal.valueOf(10_000))

@@ -2,6 +2,7 @@ package com.example.iter.device.domain.repository;
 
 import com.example.iter.common.config.JpaConfig;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import jakarta.persistence.EntityManager;
@@ -34,19 +35,19 @@ class EquipmentRepositoryAdminTest {
     void 장비명을_대소문자_구분_없이_검색한다() {
         Equipment first = equipmentRepository.saveAndFlush(equipment(
                 1L,
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "MacBook Pro",
                 EquipmentStatus.ACTIVE
         ));
         Equipment second = equipmentRepository.saveAndFlush(equipment(
                 2L,
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "MACBOOK Air",
                 EquipmentStatus.SUSPENDED
         ));
         equipmentRepository.saveAndFlush(equipment(
                 3L,
-                "CAMERA",
+                EquipmentCategory.CAMERA,
                 "소니 카메라",
                 EquipmentStatus.ACTIVE
         ));
@@ -64,22 +65,76 @@ class EquipmentRepositoryAdminTest {
     }
 
     @Test
+    void 퍼센트_기호를_와일드카드가_아닌_일반_문자로_검색한다() {
+        Equipment expected = equipmentRepository.saveAndFlush(equipment(
+                1L,
+                EquipmentCategory.OTHER,
+                "배터리 100% 충전기",
+                EquipmentStatus.ACTIVE
+        ));
+        equipmentRepository.saveAndFlush(equipment(
+                2L,
+                EquipmentCategory.OTHER,
+                "배터리 완전 충전기",
+                EquipmentStatus.ACTIVE
+        ));
+
+        var result = equipmentRepository.searchForAdmin(
+                "%",
+                null,
+                null,
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(result.getContent())
+                .extracting(Equipment::getId)
+                .containsExactly(expected.getId());
+    }
+
+    @Test
+    void 언더스코어를_와일드카드가_아닌_일반_문자로_검색한다() {
+        Equipment expected = equipmentRepository.saveAndFlush(equipment(
+                1L,
+                EquipmentCategory.CAMERA,
+                "EOS_R5 카메라",
+                EquipmentStatus.ACTIVE
+        ));
+        equipmentRepository.saveAndFlush(equipment(
+                2L,
+                EquipmentCategory.CAMERA,
+                "EOSXR5 카메라",
+                EquipmentStatus.ACTIVE
+        ));
+
+        var result = equipmentRepository.searchForAdmin(
+                "_",
+                null,
+                null,
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(result.getContent())
+                .extracting(Equipment::getId)
+                .containsExactly(expected.getId());
+    }
+
+    @Test
     void 카테고리와_상태를_모두_적용해_조회한다() {
         Equipment expected = equipmentRepository.saveAndFlush(equipment(
                 1L,
-                "CAMERA",
+                EquipmentCategory.CAMERA,
                 "소니 카메라",
                 EquipmentStatus.SUSPENDED
         ));
         equipmentRepository.saveAndFlush(equipment(
                 2L,
-                "CAMERA",
+                EquipmentCategory.CAMERA,
                 "캐논 카메라",
                 EquipmentStatus.ACTIVE
         ));
         equipmentRepository.saveAndFlush(equipment(
                 3L,
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "카메라 편집 노트북",
                 EquipmentStatus.SUSPENDED
         ));
@@ -100,13 +155,13 @@ class EquipmentRepositoryAdminTest {
     void 검색_조건이_없으면_삭제된_장비를_포함해_전체_장비를_페이징한다() {
         Equipment first = equipmentRepository.saveAndFlush(equipment(
                 1L,
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "첫 번째 장비",
                 EquipmentStatus.ACTIVE
         ));
         Equipment second = equipmentRepository.saveAndFlush(equipment(
                 2L,
-                "CAMERA",
+                EquipmentCategory.CAMERA,
                 "두 번째 장비",
                 EquipmentStatus.DELETED
         ));
@@ -138,7 +193,7 @@ class EquipmentRepositoryAdminTest {
     void 장비_상태_변경용_조회는_비관적_쓰기_락을_획득한다() {
         Equipment saved = equipmentRepository.saveAndFlush(equipment(
                 1L,
-                "LAPTOP",
+                EquipmentCategory.LAPTOP,
                 "락 대상 장비",
                 EquipmentStatus.ACTIVE
         ));
@@ -154,7 +209,7 @@ class EquipmentRepositoryAdminTest {
 
     private Equipment equipment(
             Long ownerId,
-            String category,
+            EquipmentCategory category,
             String name,
             EquipmentStatus status
     ) {

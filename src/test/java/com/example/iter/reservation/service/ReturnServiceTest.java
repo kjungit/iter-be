@@ -6,6 +6,7 @@ import com.example.iter.common.dto.request.PagingRequest;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
@@ -386,7 +387,7 @@ class ReturnServiceTest {
         return Equipment.builder()
                 .id(EQUIPMENT_ID)
                 .ownerId(OWNER_ID)
-                .category("노트북")
+                .category(EquipmentCategory.LAPTOP)
                 .name("현재 장비명")
                 .dailyPrice(BigDecimal.valueOf(50000))
                 .build();

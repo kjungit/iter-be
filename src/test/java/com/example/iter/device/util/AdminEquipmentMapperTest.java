@@ -4,6 +4,7 @@ import com.example.iter.auth.domain.entity.Role;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.device.domain.entity.Equipment;
+import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
@@ -34,7 +35,7 @@ class AdminEquipmentMapperTest {
 
         assertThat(response.equipmentId()).isEqualTo(10L);
         assertThat(response.name()).isEqualTo("맥북 프로");
-        assertThat(response.category()).isEqualTo("LAPTOP");
+        assertThat(response.category()).isEqualTo(EquipmentCategory.LAPTOP);
         assertThat(response.dailyPrice()).isEqualByComparingTo("30000");
         assertThat(response.status()).isEqualTo(EquipmentStatus.SUSPENDED);
         assertThat(response.owner().userId()).isEqualTo(2L);
@@ -78,7 +79,7 @@ class AdminEquipmentMapperTest {
         Equipment equipment = Equipment.builder()
                 .id(10L)
                 .ownerId(2L)
-                .category("LAPTOP")
+                .category(EquipmentCategory.LAPTOP)
                 .name("맥북 프로")
                 .description("테스트 장비")
                 .dailyPrice(BigDecimal.valueOf(30000))
