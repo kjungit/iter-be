@@ -25,7 +25,11 @@ import com.example.iter.reservation.dto.response.RentalApproveResponse;
 import com.example.iter.reservation.dto.response.RentalDetailResponse;
 import com.example.iter.reservation.dto.response.RentalReceivedItemResponse;
 import com.example.iter.reservation.dto.response.RentalRejectResponse;
+import com.example.iter.reservation.event.RentalApprovedEvent;
+import com.example.iter.reservation.event.RentalCanceledEvent;
+import com.example.iter.reservation.event.RentalRejectedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -50,6 +54,7 @@ public class RentalService {
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
     private final TossPaymentClient tossPaymentClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public RentalCreateResponse createRental(Long renterId, RentalCreateRequest request) {
@@ -169,6 +174,10 @@ public class RentalService {
         if (rental.getStatus() != RentalStatus.PENDING && rental.getStatus() != RentalStatus.REQUESTED) {
             throw new CustomException(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
         }
+        // owner는 결제 완료(REQUESTED) 시점에야 이 요청의 존재를 처음 알게 된다.
+        // 아직 PENDING(결제 전)인 채로 취소되면 owner는 애초에 이 요청을 몰랐으므로,
+        // "취소했습니다" 알림을 보내면 존재도 몰랐던 요청에 대한 뜬금없는 알림이 된다.
+        boolean ownerWasNotified = rental.getStatus() == RentalStatus.REQUESTED;
 
         Payment payment = paymentRepository.findByRentalId(rentalId).orElse(null);
         if (payment != null && payment.getStatus() == PaymentStatus.PAID) {
@@ -176,6 +185,9 @@ public class RentalService {
         }
 
         rental.changeStatus(RentalStatus.CANCELED);
+        if (ownerWasNotified) {
+            eventPublisher.publishEvent(new RentalCanceledEvent(rental.getId()));
+        }
 
         PaymentStatus paymentStatus = payment != null? payment.getStatus(): null;
 
@@ -216,6 +228,7 @@ public class RentalService {
         // 선점 방식(createRental 시점 락)이라 같은 기간에 REQUESTED가 동시에 여러 건 존재할 수 없어서
         // 예전처럼 "겹치는 다른 REQUESTED 자동 거절" 로직은 더 이상 필요 없다.
         rental.approve();
+        eventPublisher.publishEvent(new RentalApprovedEvent(rental.getId()));
 
         return RentalApproveResponse.from(rental);
     }
@@ -234,6 +247,7 @@ public class RentalService {
         }
 
         rejectAndRefund(rental, reason);
+        eventPublisher.publishEvent(new RentalRejectedEvent(rental.getId()));
 
         PaymentStatus paymentStatus = paymentRepository.findByRentalId(rentalId)
                 .map(Payment::getStatus)
