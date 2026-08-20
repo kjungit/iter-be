@@ -32,8 +32,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
         from Equipment e
         where (
                 :keyword is null
-                or lower(e.name)
-                    like lower(concat('%', :keyword, '%'))
+                or locate(lower(:keyword), lower(e.name)) > 0
               )
           and (
                 :category is null
