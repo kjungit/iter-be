@@ -133,7 +133,7 @@ class EquipmentAvailabilityEstimateApiTest {
 
         mockMvc.perform(estimateRequest(equipment, startDate, endDate))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE"))
                 .andExpect(jsonPath("$.message")
                         .value("선택한 기간에는 장비를 대여할 수 없습니다."));
 
@@ -142,7 +142,7 @@ class EquipmentAvailabilityEstimateApiTest {
                         LocalDate.now().plusDays(29),
                         LocalDate.now().plusDays(31)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_AVAILABLE"));
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE"));
     }
 
     @ParameterizedTest

@@ -69,7 +69,7 @@ public class EquipmentQueryService {
         AvailabilityReason reason = findUnavailabilityReason(
                 equipment, request.startDate(), request.endDate());
         if (reason != null) {
-            throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+            throw new CustomException(ErrorCode.EQUIPMENT_RENTAL_PERIOD_UNAVAILABLE);
         }
 
         int rentalDays = Math.toIntExact(
