@@ -15,6 +15,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
 
 
     // 대여자가 빌린 거래를 상태와 예약 당시 장비명으로 검색합니다.
+    // LOCATE를 사용해 %, _를 와일드카드가 아닌 실제 검색 문자로 처리합니다.
     @Query(
             value = """
                     select r
@@ -23,8 +24,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
                       and (:status is null or r.status = :status)
                       and (
                             :equipmentName is null
-                            or lower(r.productNameSnapshot)
-                                like lower(concat('%', :equipmentName, '%'))
+                            or locate(lower(:equipmentName), lower(r.productNameSnapshot)) > 0
                           )
                     """,
             countQuery = """
@@ -34,8 +34,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
                       and (:status is null or r.status = :status)
                       and (
                             :equipmentName is null
-                            or lower(r.productNameSnapshot)
-                                like lower(concat('%', :equipmentName, '%'))
+                            or locate(lower(:equipmentName), lower(r.productNameSnapshot)) > 0
                           )
                     """
     )
@@ -48,6 +47,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
 
 
     // 등록자가 소유한 장비의 대여 거래를 상태와 예약 당시 장비명으로 검색합니다.
+    // LOCATE를 사용해 %, _를 와일드카드가 아닌 실제 검색 문자로 처리합니다.
     @Query(
             value = """
                     select r
@@ -57,8 +57,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
                       and (:status is null or r.status = :status)
                       and (
                             :equipmentName is null
-                            or lower(r.productNameSnapshot)
-                                like lower(concat('%', :equipmentName, '%'))
+                            or locate(lower(:equipmentName), lower(r.productNameSnapshot)) > 0
                           )
                     """,
             countQuery = """
@@ -69,8 +68,7 @@ public interface RentalHistoryRepository extends Repository<Rental, Long> {
                       and (:status is null or r.status = :status)
                       and (
                             :equipmentName is null
-                            or lower(r.productNameSnapshot)
-                                like lower(concat('%', :equipmentName, '%'))
+                            or locate(lower(:equipmentName), lower(r.productNameSnapshot)) > 0
                           )
                     """
     )

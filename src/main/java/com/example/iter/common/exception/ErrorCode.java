@@ -44,6 +44,7 @@ public enum ErrorCode {
     INVALID_USER_STATUS_TRANSITION(HttpStatus.CONFLICT,"허용되지 않는 회원 상태 변경입니다."),
     INVALID_EQUIPMENT_STATUS_TRANSITION(HttpStatus.CONFLICT, "허용되지 않는 장비 상태 변경입니다."),
     INVALID_REPORT_STATUS_TRANSITION(HttpStatus.CONFLICT, "허용되지 않는 신고 상태 변경입니다."),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 결제 기록입니다."),
 
     // Reservation - Return (C)
     RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "수령 증빙을 찾을 수 없습니다."),

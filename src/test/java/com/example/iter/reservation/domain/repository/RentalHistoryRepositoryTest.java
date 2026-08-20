@@ -152,6 +152,70 @@ class RentalHistoryRepositoryTest {
     }
 
     @Test
+    void 장비명_검색에서_퍼센트와_언더스코어를_실제_문자로_처리한다() {
+        Equipment equipment = equipment(OWNER_ID, "검색 장비");
+        Rental percentMatch = rental(
+                equipment.getId(),
+                RENTER_ID,
+                RentalStatus.COMPLETED,
+                "할인%카메라",
+                TODAY
+        );
+        Rental underscoreMatch = rental(
+                equipment.getId(),
+                RENTER_ID,
+                RentalStatus.COMPLETED,
+                "맥북_프로",
+                TODAY
+        );
+        rental(
+                equipment.getId(),
+                RENTER_ID,
+                RentalStatus.COMPLETED,
+                "일반 장비",
+                TODAY
+        );
+
+        var percentResult = rentalHistoryRepository.findBorrowedHistory(
+                RENTER_ID,
+                null,
+                "%",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+        var underscoreResult = rentalHistoryRepository.findBorrowedHistory(
+                RENTER_ID,
+                null,
+                "_",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+        var lentPercentResult = rentalHistoryRepository.findLentHistory(
+                OWNER_ID,
+                null,
+                "%",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+        var lentUnderscoreResult = rentalHistoryRepository.findLentHistory(
+                OWNER_ID,
+                null,
+                "_",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(percentResult.getContent())
+                .extracting(Rental::getId)
+                .containsExactly(percentMatch.getId());
+        assertThat(underscoreResult.getContent())
+                .extracting(Rental::getId)
+                .containsExactly(underscoreMatch.getId());
+        assertThat(lentPercentResult.getContent())
+                .extracting(Rental::getId)
+                .containsExactly(percentMatch.getId());
+        assertThat(lentUnderscoreResult.getContent())
+                .extracting(Rental::getId)
+                .containsExactly(underscoreMatch.getId());
+    }
+
+    @Test
     void 빌린_장비_연체_이력은_종료일이_지났고_반납이_끝나지_않은_거래만_조회한다() {
         Equipment equipment = equipment(OWNER_ID, "연체 장비");
         Rental received = rental(equipment.getId(), RENTER_ID, RentalStatus.RECEIVED, "수령", TODAY.minusDays(4));

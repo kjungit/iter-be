@@ -3,6 +3,8 @@ package com.example.iter.dispute.domain.repository;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +27,9 @@ class ReportRepositoryTest {
 
     @Autowired
     private ReportRepository reportRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void 신고_ID와_신고자_ID가_모두_일치해야_상세를_조회할_수_있다() {
@@ -231,6 +236,79 @@ class ReportRepositoryTest {
                 ReportTargetType.USER,
                 10L
         )).isEqualTo(2);
+    }
+
+    @Test
+    void 관리자는_전체_신고를_대상_유형과_상태로_필터링해_조회한다() {
+        Report older = reportRepository.saveAndFlush(report(
+                REPORTER_ID,
+                ReportTargetType.EQUIPMENT,
+                100L,
+                ReportStatus.UNDER_REVIEW
+        ));
+        Report newer = reportRepository.saveAndFlush(report(
+                OTHER_REPORTER_ID,
+                ReportTargetType.EQUIPMENT,
+                101L,
+                ReportStatus.UNDER_REVIEW
+        ));
+        reportRepository.saveAndFlush(report(
+                REPORTER_ID,
+                ReportTargetType.USER,
+                10L,
+                ReportStatus.UNDER_REVIEW
+        ));
+        reportRepository.saveAndFlush(report(
+                REPORTER_ID,
+                ReportTargetType.EQUIPMENT,
+                102L,
+                ReportStatus.RESOLVED
+        ));
+
+        var result = reportRepository.searchForAdmin(
+                ReportTargetType.EQUIPMENT,
+                ReportStatus.UNDER_REVIEW,
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent())
+                .extracting(Report::getId)
+                .containsExactly(older.getId(), newer.getId());
+    }
+
+    @Test
+    void 관리자_신고_조회는_전체_건수와_페이지를_정확히_반환한다() {
+        reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.USER, 10L, ReportStatus.RECEIVED));
+        reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.EQUIPMENT, 20L, ReportStatus.RESOLVED));
+        reportRepository.saveAndFlush(report(OTHER_REPORTER_ID, ReportTargetType.RENTAL, 30L, ReportStatus.REJECTED));
+
+        var result = reportRepository.searchForAdmin(
+                null,
+                null,
+                PageRequest.of(1, 2, Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.getNumber()).isEqualTo(1);
+        assertThat(result.getContent()).hasSize(1);
+    }
+
+    @Test
+    void 관리자_신고_상태_변경용_조회는_비관적_쓰기_락을_획득한다() {
+        Report saved = reportRepository.saveAndFlush(report(
+                REPORTER_ID,
+                ReportTargetType.USER,
+                10L,
+                ReportStatus.RECEIVED
+        ));
+        entityManager.clear();
+
+        Report found = reportRepository.findWithLockById(saved.getId()).orElseThrow();
+
+        assertThat(found.getId()).isEqualTo(saved.getId());
+        assertThat(entityManager.getLockMode(found)).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     private Report report(
