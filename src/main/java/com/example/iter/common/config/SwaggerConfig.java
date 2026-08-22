@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,6 +15,25 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
 
     private static final String JWT_SCHEME_NAME = "JWT";
+    private static final String ADMIN_PATH_PATTERN = "/api/v1/admin/**";
+
+    @Bean
+    public GroupedOpenApi userApi() {
+        return GroupedOpenApi.builder()
+                .group("user")
+                .displayName("User API")
+                .pathsToExclude(ADMIN_PATH_PATTERN)
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi adminApi() {
+        return GroupedOpenApi.builder()
+                .group("admin")
+                .displayName("Admin API")
+                .pathsToMatch(ADMIN_PATH_PATTERN)
+                .build();
+    }
 
     @Bean
     public OpenAPI openAPI() {
