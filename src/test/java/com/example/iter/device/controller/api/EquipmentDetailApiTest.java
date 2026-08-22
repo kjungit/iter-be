@@ -2,6 +2,7 @@ package com.example.iter.device.controller.api;
 
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.common.security.JwtTokenProvider;
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
@@ -18,6 +19,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,8 @@ class EquipmentDetailApiTest {
     private EquipmentImageRepository equipmentImageRepository;
     @Autowired
     private ReviewRepository reviewRepository;
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
@@ -114,6 +118,32 @@ class EquipmentDetailApiTest {
                         .value("존재하지 않거나 조회할 수 없는 장비입니다."));
     }
 
+    @ParameterizedTest
+    @EnumSource(value = EquipmentStatus.class, names = "ACTIVE", mode = EnumSource.Mode.EXCLUDE)
+    void 소유자_본인은_비공개_상태여도_상세_조회할_수_있다(EquipmentStatus status) throws Exception {
+        User owner = saveOwner("비공개주인-본인-" + status.name());
+        Equipment equipment = saveEquipment(owner.getId(), status);
+
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(equipment.getId()))
+                .andExpect(jsonPath("$.status").value(status.name()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EquipmentStatus.class, names = "ACTIVE", mode = EnumSource.Mode.EXCLUDE)
+    void 소유자가_아니면_로그인해도_비공개_장비는_404를_반환한다(EquipmentStatus status) throws Exception {
+        User owner = saveOwner("비공개주인-타인-" + status.name());
+        Equipment equipment = saveEquipment(owner.getId(), status);
+        User outsider = saveOwner("제3자");
+
+        mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EQUIPMENT_NOT_FOUND"));
+    }
+
     @Test
     void 존재하지_않는_장비는_404를_반환한다() throws Exception {
         mockMvc.perform(get("/api/v1/devices/{equipmentId}", Long.MAX_VALUE))
@@ -160,6 +190,10 @@ class EquipmentDetailApiTest {
                 .sortOrder(sortOrder)
                 .thumbnail(thumbnail)
                 .build());
+    }
+
+    private String bearer(User user) {
+        return "Bearer " + jwtTokenProvider.generateAccessToken(user);
     }
 
     private void saveReview(Equipment equipment, int rating, long rentalId) {

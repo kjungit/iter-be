@@ -27,6 +27,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,7 +97,8 @@ class RentalServiceTest {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(rentalRepository.findConflictingOccupyingRentalsForUpdate(anyLong(), any(), any(), any()))
+                .thenReturn(List.of());
         when(rentalRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = rentalService.createRental(2L, request());
@@ -143,7 +145,8 @@ class RentalServiceTest {
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         mockParticipants(UserStatus.ACTIVE, UserStatus.ACTIVE);
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(rentalRepository.findConflictingOccupyingRentalsForUpdate(anyLong(), any(), any(), any()))
+                .thenReturn(List.of(rental(20L, RentalStatus.RENTING)));
 
         assertThatThrownBy(() -> rentalService.createRental(2L, request()))
                 .isInstanceOf(CustomException.class)
@@ -175,7 +178,7 @@ class RentalServiceTest {
 
     @Test
     void 장비_소유자가_아니면_승인할_수_없다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
 
         assertThatThrownBy(() -> rentalService.approveRental(10L, 2L, false))
@@ -188,7 +191,7 @@ class RentalServiceTest {
 
     @Test
     void REQUESTED_상태가_아니면_승인할_수_없다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.APPROVED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.APPROVED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
 
         assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
@@ -199,7 +202,7 @@ class RentalServiceTest {
 
     @Test
     void 승인_시점에_장비가_비활성_상태면_승인할_수_없다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(equipment(99L, EquipmentStatus.SUSPENDED)));
@@ -212,10 +215,11 @@ class RentalServiceTest {
 
     @Test
     void 이미_확정된_예약과_겹치면_RESERVATION_CONFLICT를_던진다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(true);
+        when(rentalRepository.findConflictingOccupyingRentalsForUpdate(anyLong(), any(), any(), any()))
+                .thenReturn(List.of(rental(20L, RentalStatus.RENTING)));
 
         assertThatThrownBy(() -> rentalService.approveRental(10L, 99L, false))
                 .isInstanceOf(CustomException.class)
@@ -242,10 +246,11 @@ class RentalServiceTest {
     @Test
     void 충돌이_없으면_승인된다() {
         Rental target = rental(10L, RentalStatus.REQUESTED);
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
         when(equipmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(equipment(99L)));
-        when(rentalRepository.existsConflictingOccupyingRental(anyLong(), any(), any(), any())).thenReturn(false);
+        when(rentalRepository.findConflictingOccupyingRentalsForUpdate(anyLong(), any(), any(), any()))
+                .thenReturn(List.of());
 
         var response = rentalService.approveRental(10L, 99L, false);
 
@@ -255,7 +260,7 @@ class RentalServiceTest {
 
     @Test
     void 권한이_없으면_거절할_수_없다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
 
         assertThatThrownBy(() -> rentalService.rejectRental(10L, 2L, false, "사유"))
@@ -266,7 +271,7 @@ class RentalServiceTest {
 
     @Test
     void 이미_처리된_요청은_다시_거절할_수_없다() {
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REJECTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REJECTED)));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
 
         assertThatThrownBy(() -> rentalService.rejectRental(10L, 99L, false, "사유"))
@@ -278,7 +283,7 @@ class RentalServiceTest {
     @Test
     void 정상_거절시_상태와_사유가_저장된다() {
         Rental target = rental(10L, RentalStatus.REQUESTED);
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(target));
         when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment(99L)));
 
         var response = rentalService.rejectRental(10L, 99L, false, "일정이 겹칩니다.");
@@ -292,7 +297,7 @@ class RentalServiceTest {
     void REQUESTED_상태에서_취소하면_취소_이벤트를_발행한다() {
         // owner는 REQUESTED(결제 완료) 시점에야 이 요청을 처음 알게 되므로,
         // 그 이후 취소는 owner가 이미 아는 요청에 대한 취소라 알림 대상이다.
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.REQUESTED)));
         when(paymentRepository.findByRentalId(10L)).thenReturn(Optional.empty());
 
         var response = rentalService.cancelRental(10L, 2L, false);
@@ -304,7 +309,7 @@ class RentalServiceTest {
     @Test
     void PENDING_상태에서_취소하면_취소_이벤트를_발행하지_않는다() {
         // owner는 결제 전(PENDING) 요청의 존재를 아직 모르므로, 취소 알림을 보내면 안 된다.
-        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.PENDING)));
+        when(rentalRepository.findWithLockById(10L)).thenReturn(Optional.of(rental(10L, RentalStatus.PENDING)));
         when(paymentRepository.findByRentalId(10L)).thenReturn(Optional.empty());
 
         var response = rentalService.cancelRental(10L, 2L, false);
