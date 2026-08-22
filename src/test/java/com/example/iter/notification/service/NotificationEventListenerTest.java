@@ -14,6 +14,7 @@ import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.event.RentalApprovedEvent;
 import com.example.iter.reservation.event.RentalCanceledEvent;
+import com.example.iter.reservation.event.RentalReceivedEvent;
 import com.example.iter.reservation.event.RentalRejectedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -176,5 +177,28 @@ class NotificationEventListenerTest {
 
         verify(notificationService).create(
                 eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_CANCELED), any(), any(), eq(10L));
+    }
+
+    @Test
+    void 수령확인_이벤트는_owner에게_알림을_만든다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(RentalStatus.RENTING)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.of(equipment()));
+        when(userRepository.findById(99L)).thenReturn(Optional.of(user(99L, "owner@test.com", "등록자")));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, "renter@test.com", "대여자")));
+
+        listener.onRentalReceived(new RentalReceivedEvent(10L));
+
+        verify(notificationService).create(
+                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_RECEIVED), any(), any(), eq(10L));
+    }
+
+    @Test
+    void 장비_정보가_없으면_수령확인_이벤트를_무시한다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(RentalStatus.RENTING)));
+        when(equipmentRepository.findById(1L)).thenReturn(Optional.empty());
+
+        listener.onRentalReceived(new RentalReceivedEvent(10L));
+
+        verify(notificationService, never()).create(any(), any(), any(), any(), any(), any());
     }
 }

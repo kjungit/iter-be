@@ -10,7 +10,8 @@ public enum NotificationType {
     RENTAL_REQUESTED(true),          // 새 대여 신청 도착 - 장비 등록자에게
     RENTAL_APPROVED(true),           // 대여 승인 - 대여자에게
     RENTAL_REJECTED(true),           // 대여 거절 - 대여자에게
-    RENTAL_CANCELED(true);           // 승인 전 예약 취소 - 장비 등록자에게
+    RENTAL_CANCELED(true),           // 승인 전 예약 취소 - 장비 등록자에게
+    RENTAL_RECEIVED(true);           // 수령확인 완료(대여 시작) - 장비 등록자에게
 
     private final boolean requiresEmail;
 
