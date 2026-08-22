@@ -44,4 +44,11 @@ public class Shipping extends BaseTimeEntity {
 
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
+
+    // ===== 도메인 메서드 =====
+
+    public void markDelivered(LocalDateTime deliveredAt) {
+        this.status = ShippingStatus.DELIVERED;
+        this.deliveredAt = deliveredAt;
+    }
 }

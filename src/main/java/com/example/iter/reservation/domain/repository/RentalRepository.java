@@ -96,6 +96,28 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
                                             );
 
+    /**
+     * 겹침 확인용 락 읽기 버전. equipment를 FOR UPDATE로 잠근 뒤에도 이 조회가 일반 SELECT면
+     * MySQL REPEATABLE READ 트랜잭션의 최초 스냅샷을 그대로 보므로, 락을 기다리는 동안 다른
+     * 트랜잭션이 커밋한 겹치는 예약을 놓칠 수 있다. PESSIMISTIC_READ로 최신 커밋 데이터를
+     * 강제로 다시 읽어야 하므로, 이미 equipment 락을 잡은 createRental/approveRental에서만 쓴다
+     * (평상시 가용성 조회는 락이 필요 없어 existsConflictingOccupyingRental을 그대로 쓴다).
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query(
+            "SELECT r FROM Rental r " +
+            "WHERE r.equipmentId = :equipmentId " +
+            "AND r.status NOT IN :excludedStatuses " +
+            "AND r.startDate <= :endDate " +
+            "AND r.endDate >= :startDate"
+    )
+    List<Rental> findConflictingOccupyingRentalsForUpdate(
+            @Param("equipmentId") Long equipmentId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+                                            );
+
     boolean existsByEquipmentIdAndStatusIn(
             Long equipmentId,
             Collection<RentalStatus> statuses

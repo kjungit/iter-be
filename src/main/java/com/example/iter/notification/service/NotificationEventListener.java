@@ -13,6 +13,7 @@ import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.event.RentalApprovedEvent;
 import com.example.iter.reservation.event.RentalCanceledEvent;
+import com.example.iter.reservation.event.RentalReceivedEvent;
 import com.example.iter.reservation.event.RentalRejectedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -139,6 +140,31 @@ public class NotificationEventListener {
                 owner.getId(), owner.getEmail(), NotificationType.RENTAL_CANCELED,
                 "대여 요청이 취소되었습니다",
                 "%s님이 [%s] 대여 요청을 취소했습니다.".formatted(
+                        renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot()),
+                rental.getId()
+        ));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onRentalReceived(RentalReceivedEvent event) {
+        Rental rental = rentalRepository.findById(event.rentalId()).orElse(null);
+        if (rental == null) {
+            return;
+        }
+        Equipment equipment = equipmentRepository.findById(rental.getEquipmentId()).orElse(null);
+        if (equipment == null) {
+            return;
+        }
+        User owner = userRepository.findById(equipment.getOwnerId()).orElse(null);
+        User renter = userRepository.findById(rental.getRenterId()).orElse(null);
+        if (owner == null) {
+            return;
+        }
+
+        notify(() -> notificationService.create(
+                owner.getId(), owner.getEmail(), NotificationType.RENTAL_RECEIVED,
+                "대여자가 수령을 확인했습니다",
+                "%s님이 [%s] 물품 수령을 확인했습니다. 대여가 시작됩니다.".formatted(
                         renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot()),
                 rental.getId()
         ));

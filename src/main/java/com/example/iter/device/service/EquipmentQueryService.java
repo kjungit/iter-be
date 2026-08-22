@@ -96,10 +96,15 @@ public class EquipmentQueryService {
         );
     }
 
-    public EquipmentDetailResponse getEquipmentDetail(Long equipmentId) {
-        var row = equipmentRepository.findPublicDetailById(equipmentId)
+    // 공개(ACTIVE) 장비는 누구나 조회 가능하고, 그 외 상태(숨김/점검/차단/삭제)는 소유자 본인만 조회할 수 있다.
+    public EquipmentDetailResponse getEquipmentDetail(Long requesterId, Long equipmentId) {
+        var row = equipmentRepository.findManagementDetailById(equipmentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
         var equipment = row.equipment();
+        boolean isOwner = requesterId != null && equipment.isOwnedBy(requesterId);
+        if (equipment.getStatus() != EquipmentStatus.ACTIVE && !isOwner) {
+            throw new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND);
+        }
         var owner = userRepository.findSummaryById(equipment.getOwnerId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
         List<EquipmentImageResponse> images = equipmentImageRepository

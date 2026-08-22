@@ -15,6 +15,7 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
+    CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해주세요."),
 
     // Auth
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
@@ -82,6 +83,10 @@ public enum ErrorCode {
     RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "승인 이후 예약은 취소할 수 없습니다."),
     RENTAL_NOT_APPROVABLE(HttpStatus.CONFLICT, "승인 대기 상태의 예약만 승인할 수 있습니다."),
     RENTAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 요청은 다시 처리할 수 없습니다."),
+    RENTAL_NOT_SHIPPABLE(HttpStatus.CONFLICT, "승인된 예약만 배송 등록할 수 있습니다."),
+    RENTAL_NOT_RECEIVABLE(HttpStatus.CONFLICT, "배송 중인 예약만 수령 확인할 수 있습니다."),
+    RENTAL_NOT_RETURN_REQUESTABLE(HttpStatus.CONFLICT, "대여 중인 예약만 반납 신청할 수 있습니다."),
+    RENTAL_NOT_RETURN_EVIDENCE_SUBMITTABLE(HttpStatus.CONFLICT, "반납 신청된 예약만 반납 증빙을 제출할 수 있습니다."),
     RESERVATION_CONFLICT(HttpStatus.CONFLICT, "이미 확정된 예약과 기간이 겹쳐 승인할 수 없습니다."),
     TOSS_PAYMENT_FAILED(HttpStatus.BAD_GATEWAY, "토스 결제 승인에 실패했습니다."),
     TOSS_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "결제 금액이 일치하지 않습니다."),

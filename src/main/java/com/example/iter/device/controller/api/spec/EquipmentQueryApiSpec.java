@@ -1,5 +1,6 @@
 package com.example.iter.device.controller.api.spec;
 
+import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "Equipment", description = "장비 조회 API")
 public interface EquipmentQueryApiSpec {
@@ -27,8 +29,13 @@ public interface EquipmentQueryApiSpec {
             @ParameterObject EquipmentEstimateRequest request
     );
 
-    @Operation(summary = "장비 상세 정보 조회", description = "공개 중인 장비의 상세 정보와 이미지, 소유자, 평점을 조회합니다.")
-    ResponseEntity<EquipmentDetailResponse> getEquipmentDetail(Long equipmentId);
+    @Operation(summary = "장비 상세 정보 조회",
+            description = "공개 중인 장비의 상세 정보와 이미지, 소유자, 평점을 조회합니다. "
+                    + "요청자가 해당 장비의 소유자면 비공개 상태여도 조회할 수 있습니다.")
+    ResponseEntity<EquipmentDetailResponse> getEquipmentDetail(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            Long equipmentId
+    );
 
     @Operation(summary = "장비 목록 조회", description = "공개 중인 장비를 검색 조건과 정렬 기준으로 조회합니다.")
     ResponseEntity<EquipmentListResponse> getEquipmentList(

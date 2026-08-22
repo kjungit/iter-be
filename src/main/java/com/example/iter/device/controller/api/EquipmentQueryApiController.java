@@ -1,5 +1,6 @@
 package com.example.iter.device.controller.api;
 
+import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.controller.api.spec.EquipmentQueryApiSpec;
 import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
@@ -12,6 +13,7 @@ import com.example.iter.device.service.EquipmentQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,9 +49,11 @@ public class EquipmentQueryApiController implements EquipmentQueryApiSpec {
     @Override
     @GetMapping("/{equipmentId}")
     public ResponseEntity<EquipmentDetailResponse> getEquipmentDetail(
+            @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long equipmentId
     ) {
-        return ResponseEntity.ok(equipmentQueryService.getEquipmentDetail(equipmentId));
+        Long requesterId = principal == null ? null : principal.getUser().getId();
+        return ResponseEntity.ok(equipmentQueryService.getEquipmentDetail(requesterId, equipmentId));
     }
 
     @Override

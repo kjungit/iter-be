@@ -5,3 +5,13 @@ build/
 .DS_Store
 
 src/main/resources/application-secret.yml
+.env
+
+# Gradle wrapper 로컬 캐시 (GRADLE_USER_HOME이 프로젝트 루트를 가리킬 때 생성됨)
+/caches/
+/daemon/
+/native/
+/wrapper/
+
+# 로컬 수동 테스트로 업로드된 파일
+/uploads/

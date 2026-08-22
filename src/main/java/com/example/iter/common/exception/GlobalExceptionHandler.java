@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -94,6 +95,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.from(ErrorCode.FORBIDDEN.name(), ErrorCode.FORBIDDEN.getMessage()));
+    }
+
+    // 같은 행을 동시에 수정해서 발생한 낙관적 락(@Version) 충돌 — 서버 오류가 아니라
+    // "먼저 처리된 다른 요청과 경합했다"는 신호이므로 500이 아니라 409로 내려준다.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            ObjectOptimisticLockingFailureException e) {
+        log.warn("낙관적 락 충돌: {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.CONCURRENT_MODIFICATION.getStatus())
+                .body(ErrorResponse.from(
+                        ErrorCode.CONCURRENT_MODIFICATION.name(), ErrorCode.CONCURRENT_MODIFICATION.getMessage()));
     }
 
     // 그 외 예상하지 못한 모든 예외

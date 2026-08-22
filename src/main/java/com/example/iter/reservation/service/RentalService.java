@@ -91,11 +91,11 @@ public class RentalService {
             throw new CustomException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
         }
 
-        if (rentalRepository.existsConflictingOccupyingRental(
+        if (!rentalRepository.findConflictingOccupyingRentalsForUpdate(
                 equipment.getId(),
                 startDate,
                 endDate,
-                RentalConflictPolicy.nonOccupyingStatuses())) {
+                RentalConflictPolicy.nonOccupyingStatuses()).isEmpty()) {
             throw new CustomException(ErrorCode.RENTAL_PERIOD_CONFLICT);
         }
 
@@ -166,7 +166,7 @@ public class RentalService {
 
     @Transactional
     public RentalCancelResponse cancelRental(Long rentalId, Long currentUserId, boolean isAdmin) {
-        Rental rental = getRentalOrThrow(rentalId);
+        Rental rental = getRentalWithLockOrThrow(rentalId);
 
         if (!isAdmin && !rental.isRenter(currentUserId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
@@ -196,7 +196,7 @@ public class RentalService {
 
     @Transactional
     public RentalApproveResponse approveRental(Long rentalId, Long currentUserId, boolean isAdmin) {
-        Rental rental = getRentalOrThrow(rentalId);
+        Rental rental = getRentalWithLockOrThrow(rentalId);
         Equipment equipment = equipmentRepository.findById(rental.getEquipmentId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
@@ -216,11 +216,11 @@ public class RentalService {
         }
 
         // 2) 이 사이 다른 트랜잭션이 먼저 커밋한 확정 예약이 있으면 승인 불가
-        if (rentalRepository.existsConflictingOccupyingRental(
+        if (!rentalRepository.findConflictingOccupyingRentalsForUpdate(
                 equipment.getId(),
                 rental.getStartDate(),
                 rental.getEndDate(),
-                RentalConflictPolicy.nonConfirmedStatuses())) {
+                RentalConflictPolicy.nonConfirmedStatuses()).isEmpty()) {
             throw new CustomException(ErrorCode.RESERVATION_CONFLICT);
         }
 
@@ -235,7 +235,7 @@ public class RentalService {
 
     @Transactional
     public RentalRejectResponse rejectRental(Long rentalId, Long currentUserId, boolean isAdmin, String reason) {
-        Rental rental = getRentalOrThrow(rentalId);
+        Rental rental = getRentalWithLockOrThrow(rentalId);
         Equipment equipment = equipmentRepository.findById(rental.getEquipmentId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
@@ -284,6 +284,15 @@ public class RentalService {
 
     private Rental getRentalOrThrow(Long rentalId) {
         return rentalRepository.findById(rentalId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RENTAL_NOT_FOUND));
+    }
+
+    // 같은 거래에 대한 승인/취소/거절이 동시에 들어와도 순서대로 처리되도록 잠가서 조회한다.
+    // 락 없이 조회하면 두 트랜잭션이 같은 버전을 읽고 나중에 커밋하는 쪽에서 낙관적 락 예외가 터진다
+    // (부하테스트에서 확인된 문제 — GlobalExceptionHandler의 낙관적 락 핸들러는 그래도 발생할 수 있는
+    // 다른 경합에 대비한 방어선이고, 이 락이 같은 rentalId에 대한 경합 자체를 직렬화하는 1차 방지책).
+    private Rental getRentalWithLockOrThrow(Long rentalId) {
+        return rentalRepository.findWithLockById(rentalId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RENTAL_NOT_FOUND));
     }
 
