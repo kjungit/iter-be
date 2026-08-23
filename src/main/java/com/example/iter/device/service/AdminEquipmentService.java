@@ -21,6 +21,7 @@ import com.example.iter.device.dto.response.AdminEquipmentDetailResponse;
 import com.example.iter.device.dto.response.AdminEquipmentSummaryResponse;
 import com.example.iter.device.util.AdminEquipmentMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminEquipmentService {
@@ -104,6 +106,8 @@ public class AdminEquipmentService {
         );
 
         equipmentRepository.flush();
+        log.info("관리자 장비 상태 변경 처리: adminId={}, equipmentId={}, action={}, status={}",
+                adminId, equipmentId, action, equipment.getStatus());
 
         User owner = userRepository.findById(equipment.getOwnerId()).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         List<EquipmentImage> images = equipmentImageRepository.findByEquipmentIdOrderBySortOrderAsc(equipmentId);

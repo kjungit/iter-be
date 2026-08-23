@@ -104,6 +104,8 @@ public class EquipmentManagementService {
         }
 
         equipmentImageRepository.flush();
+        log.info("장비 등록 처리: equipmentId={}, ownerId={}, imageCount={}",
+                equipment.getId(), owner.getId(), storedImages.size());
         return toDetailResponse(equipment.getId());
     }
 
@@ -154,6 +156,8 @@ public class EquipmentManagementService {
         LocalDateTime usedAt = LocalDateTime.now();
         uploadRecords.forEach(upload -> upload.use(usedAt));
         equipmentImageRepository.flush();
+        log.info("장비 이미지 추가 처리: equipmentId={}, ownerId={}, addedCount={}",
+                equipmentId, owner.getId(), storedImages.size());
 
         return equipmentImageRepository.findByEquipmentIdOrderBySortOrderAscIdAsc(equipmentId)
                 .stream()
@@ -187,6 +191,8 @@ public class EquipmentManagementService {
         equipmentImageRepository.delete(target);
         equipmentImageRepository.flush();
         registerDeleteAfterCommit(target.getObjectKey());
+        log.info("장비 이미지 삭제 처리: equipmentId={}, ownerId={}, imageId={}",
+                equipmentId, ownerId, imageId);
     }
 
     @Transactional
@@ -230,6 +236,7 @@ public class EquipmentManagementService {
                 normalizeConditionDetail(productCondition, conditionDetail)
         );
         equipmentRepository.flush();
+        log.info("장비 정보 변경 처리: equipmentId={}, ownerId={}", equipmentId, ownerId);
         return toDetailResponse(equipmentId);
     }
 
@@ -247,6 +254,7 @@ public class EquipmentManagementService {
 
         equipment.delete();
         equipmentRepository.flush();
+        log.info("장비 삭제 처리: equipmentId={}, ownerId={}", equipmentId, ownerId);
     }
 
     @Transactional
@@ -267,8 +275,11 @@ public class EquipmentManagementService {
             validateCanCreate(owner);
         }
 
+        EquipmentStatus previousStatus = equipment.getStatus();
         equipment.changeStatus(request.status());
         equipmentRepository.flush();
+        log.info("장비 상태 변경 처리: equipmentId={}, ownerId={}, previousStatus={}, status={}",
+                equipmentId, owner.getId(), previousStatus, equipment.getStatus());
         return new EquipmentStatusResponse(
                 equipment.getId(),
                 equipment.getStatus(),

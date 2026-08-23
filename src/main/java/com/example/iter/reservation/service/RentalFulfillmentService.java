@@ -19,6 +19,7 @@ import com.example.iter.reservation.dto.response.ReturnRequestResponse;
 import com.example.iter.reservation.dto.response.ShippingRegisterResponse;
 import com.example.iter.reservation.event.RentalReceivedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ import java.util.stream.IntStream;
 // RECEIVED/RETURNING은 ERD상 별도 상태로 정의돼 있지만, 이 서비스는 "수령확인 = 대여 시작"
 // "반납증빙 제출 = 반납 도착"으로 한 요청 안에서 곧바로 다음 상태까지 묶어 처리한다 — 프론트
 // UX가 그 중간 상태를 별도 액션으로 노출하지 않기 때문 (RentalStatus enum 값 자체는 그대로 유지).
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -71,6 +73,8 @@ public class RentalFulfillmentService {
                 .build());
 
         rental.changeStatus(RentalStatus.SHIPPING);
+        log.info("대여 출고 처리: rentalId={}, equipmentId={}, ownerId={}, status={}",
+                rentalId, rental.getEquipmentId(), ownerId, rental.getStatus());
 
         return new ShippingRegisterResponse(
                 rental.getId(), rental.getStatus(), request.carrier(), request.trackingNumber(), now);
@@ -96,6 +100,8 @@ public class RentalFulfillmentService {
 
         rental.changeStatus(RentalStatus.RENTING);
         eventPublisher.publishEvent(new RentalReceivedEvent(rental.getId()));
+        log.info("대여 수령 처리: rentalId={}, renterId={}, status={}",
+                rentalId, renterId, rental.getStatus());
 
         return new ReceiptCreateResponse(rental.getId(), rental.getStatus(), now);
     }
@@ -110,6 +116,8 @@ public class RentalFulfillmentService {
         }
 
         rental.changeStatus(RentalStatus.RETURN_REQUESTED);
+        log.info("대여 반납 신청 처리: rentalId={}, renterId={}, status={}",
+                rentalId, renterId, rental.getStatus());
         return new ReturnRequestResponse(rental.getId(), rental.getStatus());
     }
 
@@ -143,6 +151,8 @@ public class RentalFulfillmentService {
                 .build());
 
         rental.changeStatus(RentalStatus.RETURNED);
+        log.info("대여 반납 증빙 등록 처리: rentalId={}, renterId={}, status={}",
+                rentalId, renterId, rental.getStatus());
 
         return new ReturnEvidenceCreateResponse(rental.getId(), rental.getStatus(), today);
     }
