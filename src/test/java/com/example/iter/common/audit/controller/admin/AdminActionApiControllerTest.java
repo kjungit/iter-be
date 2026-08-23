@@ -9,7 +9,7 @@ import com.example.iter.common.audit.dto.request.AdminActionSearchRequest;
 import com.example.iter.common.audit.dto.response.AdminActionResponse;
 import com.example.iter.common.audit.service.AdminActionQueryService;
 import com.example.iter.common.config.RestApiSecurityTestConfig;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.common.security.CustomUserDetailsService;
@@ -82,7 +82,7 @@ class AdminActionApiControllerTest {
     }
 
     @Test
-    void 관리자가_검색_조건과_페이지_정보로_처리_이력을_조회한다() throws Exception {
+    void 관리자가_검색_조건과_커서_정보로_처리_이력을_조회한다() throws Exception {
         AdminActionResponse actionResponse = new AdminActionResponse(
                 ACTION_ID,
                 ADMIN_ID,
@@ -93,12 +93,11 @@ class AdminActionApiControllerTest {
                 LocalDateTime.of(2026, 8, 1, 10, 0)
         );
         when(adminActionQueryService.getAdminActions(any(AdminActionSearchRequest.class)))
-                .thenReturn(new PageResponse<>(
+                .thenReturn(new CursorPageResponse<>(
                         List.of(actionResponse),
-                        1,
-                        10,
-                        21,
-                        3
+                        "next-cursor",
+                        true,
+                        10
                 ));
 
         mockMvc.perform(get("/api/v1/admin/actions")
@@ -106,7 +105,7 @@ class AdminActionApiControllerTest {
                         .queryParam("targetType", "EQUIPMENT")
                         .queryParam("targetId", TARGET_ID.toString())
                         .queryParam("action", "SUSPEND_EQUIPMENT")
-                        .queryParam("page", "1")
+                        .queryParam("cursor", "current-cursor")
                         .queryParam("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].actionId").value(ACTION_ID))
@@ -116,9 +115,12 @@ class AdminActionApiControllerTest {
                 .andExpect(jsonPath("$.content[0].action").value("SUSPEND_EQUIPMENT"))
                 .andExpect(jsonPath("$.content[0].reason").value("신고 누적으로 관리자 차단"))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-08-01T10:00:00"))
-                .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.size").value(10))
-                .andExpect(jsonPath("$.totalElements").value(21));
+                .andExpect(jsonPath("$.nextCursor").value("next-cursor"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.page").doesNotExist())
+                .andExpect(jsonPath("$.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist());
 
         ArgumentCaptor<AdminActionSearchRequest> captor =
                 ArgumentCaptor.forClass(AdminActionSearchRequest.class);
@@ -130,28 +132,27 @@ class AdminActionApiControllerTest {
         assertThat(capturedRequest.targetId()).isEqualTo(TARGET_ID);
         assertThat(capturedRequest.action())
                 .isEqualTo(AdminActionType.SUSPEND_EQUIPMENT);
-        assertThat(capturedRequest.page()).isEqualTo(1);
+        assertThat(capturedRequest.cursor()).isEqualTo("current-cursor");
         assertThat(capturedRequest.size()).isEqualTo(10);
     }
 
     @Test
-    void 검색_조건과_페이지_정보를_생략하면_기본값으로_처리_이력을_조회한다() throws Exception {
+    void 검색_조건과_커서를_생략하면_기본값으로_처리_이력을_조회한다() throws Exception {
         when(adminActionQueryService.getAdminActions(any(AdminActionSearchRequest.class)))
-                .thenReturn(new PageResponse<>(
+                .thenReturn(new CursorPageResponse<>(
                         List.<AdminActionResponse>of(),
-                        0,
-                        20,
-                        0,
-                        0
+                        null,
+                        false,
+                        20
                 ));
 
         mockMvc.perform(get("/api/v1/admin/actions")
                         .with(user(adminPrincipal)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
-                .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.hasNext").value(false));
 
         ArgumentCaptor<AdminActionSearchRequest> captor =
                 ArgumentCaptor.forClass(AdminActionSearchRequest.class);
@@ -161,7 +162,7 @@ class AdminActionApiControllerTest {
         assertThat(capturedRequest.targetType()).isNull();
         assertThat(capturedRequest.targetId()).isNull();
         assertThat(capturedRequest.action()).isNull();
-        assertThat(capturedRequest.page()).isZero();
+        assertThat(capturedRequest.cursor()).isNull();
         assertThat(capturedRequest.size()).isEqualTo(20);
     }
 
@@ -197,7 +198,7 @@ class AdminActionApiControllerTest {
 
     @ParameterizedTest
     @MethodSource("invalidPaginationParameters")
-    void 페이지_정보가_허용_범위를_벗어나면_400을_반환한다(
+    void 커서_정보가_허용_범위를_벗어나면_400을_반환한다(
             String parameterName,
             String parameterValue
     ) throws Exception {
@@ -227,7 +228,7 @@ class AdminActionApiControllerTest {
 
     private static Stream<Arguments> invalidPaginationParameters() {
         return Stream.of(
-                Arguments.of("page", "-1"),
+                Arguments.of("cursor", "a".repeat(201)),
                 Arguments.of("size", "0"),
                 Arguments.of("size", "101")
         );

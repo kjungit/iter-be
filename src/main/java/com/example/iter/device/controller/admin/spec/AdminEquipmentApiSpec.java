@@ -1,6 +1,6 @@
 package com.example.iter.device.controller.admin.spec;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.dto.request.AdminEquipmentSearchRequest;
 import com.example.iter.device.dto.request.AdminEquipmentStatusRequest;
@@ -24,15 +24,15 @@ public interface AdminEquipmentApiSpec {
 
     @Operation(
             summary = "장비 목록 조회",
-            description = "장비명·카테고리·장비 상태 조건으로 삭제된 장비를 포함한 전체 장비를 최신 등록순으로 조회합니다."
+            description = "장비명·카테고리·장비 상태 조건으로 삭제된 장비를 포함한 전체 장비를 최신 등록순으로 커서 조회합니다. 첫 요청에서는 cursor를 생략하고 다음 요청에는 응답의 nextCursor를 전달합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "장비 목록 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "검색 또는 페이징 조건 오류", content = @Content),
+            @ApiResponse(responseCode = "400", description = "검색 또는 커서 조건 오류", content = @Content),
             @ApiResponse(responseCode = "401", description = "인증 필요", content = @Content),
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음", content = @Content)
     })
-    ResponseEntity<PageResponse<AdminEquipmentSummaryResponse>> getEquipments(
+    ResponseEntity<CursorPageResponse<AdminEquipmentSummaryResponse>> getEquipments(
             @Valid @ParameterObject AdminEquipmentSearchRequest request
     );
 

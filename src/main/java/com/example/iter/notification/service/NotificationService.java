@@ -70,8 +70,8 @@ public class NotificationService {
     public PageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Notification> result = unreadOnly
-                ? notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDesc(userId, pageable)
-                : notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId, pageable);
+                ? notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(userId, pageable)
+                : notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(userId, pageable);
         return PageResponse.from(result.map(NotificationResponse::from));
     }
 

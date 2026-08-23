@@ -14,6 +14,7 @@ import com.example.iter.payment.client.TossPaymentClient;
 import com.example.iter.payment.domain.entity.Payment;
 import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.PaymentRepository;
+import com.example.iter.payment.service.model.RentalPaymentStatusRow;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
@@ -32,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +41,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -150,18 +156,61 @@ public class RentalService {
     public PageResponse<RentalReceivedItemResponse> getReceivedRentals(Long ownerId, RentalStatus status,
                                                                          int page, int size) {
         Page<Rental> rentals = rentalRepository.findReceivedRentals(
-                ownerId, status, PageRequest.of(page, size));
+                ownerId,
+                status,
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(
+                                Sort.Order.desc("createdAt"),
+                                Sort.Order.desc("id")
+                        )
+                )
+        );
+
+        Map<Long, UserSummaryResponse> renterMap = loadRenterSummaries(rentals.getContent());
+        Map<Long, PaymentStatus> paymentStatusMap = loadPaymentStatuses(rentals.getContent());
 
         Page<RentalReceivedItemResponse> response = rentals.map(rental -> {
-            UserSummaryResponse renter = userRepository.findSummaryById(rental.getRenterId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-            PaymentStatus paymentStatus = paymentRepository.findByRentalId(rental.getId())
-                    .map(Payment::getStatus)
-                    .orElse(null);
+            UserSummaryResponse renter = renterMap.get(rental.getRenterId());
+            if (renter == null) {
+                throw new CustomException(ErrorCode.USER_NOT_FOUND);
+            }
+            PaymentStatus paymentStatus = paymentStatusMap.get(rental.getId());
             return RentalReceivedItemResponse.of(rental, renter, paymentStatus);
         });
 
         return PageResponse.from(response);
+    }
+
+    private Map<Long, UserSummaryResponse> loadRenterSummaries(List<Rental> rentals) {
+        if (rentals.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> renterIds = rentals.stream()
+                .map(Rental::getRenterId)
+                .distinct()
+                .toList();
+
+        return userRepository.findSummariesByIdIn(renterIds).stream()
+                .collect(Collectors.toMap(UserSummaryResponse::userId, Function.identity()));
+    }
+
+    private Map<Long, PaymentStatus> loadPaymentStatuses(List<Rental> rentals) {
+        if (rentals.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> rentalIds = rentals.stream()
+                .map(Rental::getId)
+                .toList();
+
+        return paymentRepository.findStatusesByRentalIdIn(rentalIds).stream()
+                .collect(Collectors.toMap(
+                        RentalPaymentStatusRow::rentalId,
+                        RentalPaymentStatusRow::paymentStatus
+                ));
     }
 
     @Transactional

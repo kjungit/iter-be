@@ -5,10 +5,8 @@ import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
-import com.example.iter.device.domain.entity.Review;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
-import com.example.iter.device.domain.repository.ReviewRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
@@ -41,13 +39,10 @@ class EquipmentQueryApiTest {
     @Autowired
     private EquipmentImageRepository equipmentImageRepository;
     @Autowired
-    private ReviewRepository reviewRepository;
-    @Autowired
     private RentalRepository rentalRepository;
 
     @BeforeEach
     void setUp() {
-        reviewRepository.deleteAll();
         equipmentImageRepository.deleteAll();
         rentalRepository.deleteAll();
         equipmentRepository.deleteAll();
@@ -105,21 +100,39 @@ class EquipmentQueryApiTest {
     }
 
     @Test
-    void 평점순은_평균평점_리뷰수_ID순으로_정렬한다() throws Exception {
-        Equipment lower = saveEquipment("평점 4점", EquipmentCategory.CAMERA, 10_000,
+    void 평점순_요청은_리뷰_비활성화로_최신순과_기본값을_반환한다() throws Exception {
+        saveEquipment("이전 장비", EquipmentCategory.CAMERA, 10_000, EquipmentStatus.ACTIVE);
+        Equipment latest = saveEquipment("최신 장비", EquipmentCategory.CAMERA, 20_000,
                 EquipmentStatus.ACTIVE);
-        Equipment higher = saveEquipment("평점 5점", EquipmentCategory.CAMERA, 20_000,
-                EquipmentStatus.ACTIVE);
-        saveReview(lower, 4, 10L);
-        saveReview(higher, 5, 11L);
-        saveReview(higher, 5, 12L);
 
         mockMvc.perform(get("/api/v1/devices").param("sort", "RATING_DESC"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(higher.getId()))
-                .andExpect(jsonPath("$.content[0].averageRating").value(5.0))
-                .andExpect(jsonPath("$.content[0].reviewCount").value(2))
-                .andExpect(jsonPath("$.content[1].id").value(lower.getId()));
+                .andExpect(jsonPath("$.content[0].id").value(latest.getId()))
+                .andExpect(jsonPath("$.content[0].averageRating").value(0.0))
+                .andExpect(jsonPath("$.content[0].reviewCount").value(0));
+    }
+
+    @Test
+    void 가격순은_ID를_보조_정렬로_사용하고_리뷰_기본값을_반환한다() throws Exception {
+        Equipment samePriceLowerId = saveEquipment("동일 가격 A", EquipmentCategory.CAMERA, 10_000,
+                EquipmentStatus.ACTIVE);
+        Equipment samePriceHigherId = saveEquipment("동일 가격 B", EquipmentCategory.CAMERA, 10_000,
+                EquipmentStatus.ACTIVE);
+        Equipment expensive = saveEquipment("고가 장비", EquipmentCategory.CAMERA, 20_000,
+                EquipmentStatus.ACTIVE);
+        mockMvc.perform(get("/api/v1/devices").param("sort", "PRICE_ASC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(samePriceHigherId.getId()))
+                .andExpect(jsonPath("$.content[0].averageRating").value(0.0))
+                .andExpect(jsonPath("$.content[0].reviewCount").value(0))
+                .andExpect(jsonPath("$.content[1].id").value(samePriceLowerId.getId()))
+                .andExpect(jsonPath("$.content[2].id").value(expensive.getId()));
+
+        mockMvc.perform(get("/api/v1/devices").param("sort", "PRICE_DESC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(expensive.getId()))
+                .andExpect(jsonPath("$.content[1].id").value(samePriceHigherId.getId()))
+                .andExpect(jsonPath("$.content[2].id").value(samePriceLowerId.getId()));
     }
 
     @Test
@@ -228,16 +241,6 @@ class EquipmentQueryApiTest {
                 .imageUrl(imageUrl)
                 .sortOrder(0)
                 .thumbnail(true)
-                .build());
-    }
-
-    private void saveReview(Equipment equipment, int rating, long rentalId) {
-        reviewRepository.save(Review.builder()
-                .rentalId(rentalId)
-                .equipment(equipment)
-                .userId(rentalId)
-                .rating(rating)
-                .content("리뷰")
                 .build());
     }
 

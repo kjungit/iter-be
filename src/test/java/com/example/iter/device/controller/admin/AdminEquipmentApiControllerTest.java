@@ -5,7 +5,7 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
 import com.example.iter.common.config.RestApiSecurityTestConfig;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.common.security.CustomUserDetailsService;
@@ -88,7 +88,7 @@ class AdminEquipmentApiControllerTest {
     }
 
     @Test
-    void 관리자가_장비_목록을_검색하고_페이징해_조회한다() throws Exception {
+    void 관리자가_장비_목록을_검색하고_커서로_조회한다() throws Exception {
         AdminEquipmentSummaryResponse summary = new AdminEquipmentSummaryResponse(
                 EQUIPMENT_ID,
                 "맥북 프로",
@@ -100,14 +100,14 @@ class AdminEquipmentApiControllerTest {
                 LocalDateTime.of(2026, 8, 1, 10, 0)
         );
         when(adminEquipmentService.getEquipments(any(AdminEquipmentSearchRequest.class)))
-                .thenReturn(new PageResponse<>(List.of(summary), 0, 20, 1, 1));
+                .thenReturn(new CursorPageResponse<>(List.of(summary), "next-cursor", true, 20));
 
         mockMvc.perform(get("/api/v1/admin/equipment")
                         .with(user(adminPrincipal))
                         .queryParam("keyword", "맥북")
                         .queryParam("category", "LAPTOP")
                         .queryParam("status", "ACTIVE")
-                        .queryParam("page", "0")
+                        .queryParam("cursor", "current-cursor")
                         .queryParam("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].equipmentId").value(EQUIPMENT_ID))
@@ -115,7 +115,11 @@ class AdminEquipmentApiControllerTest {
                 .andExpect(jsonPath("$.content[0].category").value("LAPTOP"))
                 .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$.content[0].owner.userId").value(USER_ID))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.nextCursor").value("next-cursor"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.page").doesNotExist())
+                .andExpect(jsonPath("$.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist());
 
         ArgumentCaptor<AdminEquipmentSearchRequest> captor =
                 ArgumentCaptor.forClass(AdminEquipmentSearchRequest.class);
@@ -123,7 +127,7 @@ class AdminEquipmentApiControllerTest {
         assertThat(captor.getValue().keyword()).isEqualTo("맥북");
         assertThat(captor.getValue().category()).isEqualTo("LAPTOP");
         assertThat(captor.getValue().status()).isEqualTo(EquipmentStatus.ACTIVE);
-        assertThat(captor.getValue().page()).isZero();
+        assertThat(captor.getValue().cursor()).isEqualTo("current-cursor");
         assertThat(captor.getValue().size()).isEqualTo(20);
     }
 

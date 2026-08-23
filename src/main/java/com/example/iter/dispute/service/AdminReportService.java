@@ -5,21 +5,21 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.audit.domain.entity.AdminActionTargetType;
 import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.service.AdminActionService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.repository.ReportRepository;
+import com.example.iter.dispute.dto.request.AdminReportSearchRequest;
 import com.example.iter.dispute.dto.request.AdminReportUpdateRequest;
-import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import com.example.iter.dispute.util.AdminReportMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,32 +38,29 @@ public class AdminReportService {
     private final AdminActionService adminActionService;
     private final AdminReportMapper adminReportMapper;
 
-    // 관리자가 대상 유형과 상태 조건으로 전체 신고 목록을 조회합니다.
+    // 관리자가 대상 유형과 상태 조건으로 전체 신고 목록을 커서 조회합니다.
     @Transactional(readOnly = true)
-    public PageResponse<ReportSummaryResponse> getReports(ReportSearchRequest request) {
-        PageRequest pageable = PageRequest.of(
-                request.page(),
-                request.size(),
-                Sort.by(
-                        Sort.Order.desc("createdAt"),
-                        Sort.Order.desc("id")
-                )
-        );
-
-        Page<Report> reportPage = reportRepository.searchForAdmin(
+    public CursorPageResponse<ReportSummaryResponse> getReports(AdminReportSearchRequest request) {
+        CursorKey cursorKey = CursorCodec.decode(request.cursor());
+        List<Report> reports = reportRepository.searchForAdminByCursor(
                 request.targetType(),
                 request.status(),
-                pageable
+                cursorKey == null ? null : cursorKey.createdAt(),
+                cursorKey == null ? null : cursorKey.id(),
+                PageRequest.of(0, request.size() + 1)
         );
 
-        Map<Long, User> reporterMap = loadReporters(reportPage.getContent());
+        Map<Long, User> reporterMap = loadReporters(reports);
 
-        Page<ReportSummaryResponse> responsePage = reportPage.map(report -> adminReportMapper.toSummary(
-                report,
-                getRequiredReporter(reporterMap, report.getReporterId())
-        ));
-
-        return PageResponse.from(responsePage);
+        return CursorPageResponse.from(
+                reports,
+                request.size(),
+                report -> adminReportMapper.toSummary(
+                        report,
+                        getRequiredReporter(reporterMap, report.getReporterId())
+                ),
+                report -> new CursorKey(report.getCreatedAt(), report.getId())
+        );
     }
 
     // 관리자가 특정 신고의 상세 정보와 관리자 처리 정보를 조회합니다.

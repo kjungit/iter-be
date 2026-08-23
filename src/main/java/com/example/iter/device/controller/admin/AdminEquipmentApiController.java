@@ -1,6 +1,6 @@
 package com.example.iter.device.controller.admin;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.device.controller.admin.spec.AdminEquipmentApiSpec;
 import com.example.iter.device.dto.request.AdminEquipmentSearchRequest;
@@ -33,7 +33,7 @@ public class AdminEquipmentApiController implements AdminEquipmentApiSpec {
     // 관리자가 검색 조건과 페이지 정보로 전체 장비 목록을 조회합니다.
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<AdminEquipmentSummaryResponse>> getEquipments(@ModelAttribute AdminEquipmentSearchRequest request) {
+    public ResponseEntity<CursorPageResponse<AdminEquipmentSummaryResponse>> getEquipments(@ModelAttribute AdminEquipmentSearchRequest request) {
         return ResponseEntity.ok(adminEquipmentService.getEquipments(request));
     }
 

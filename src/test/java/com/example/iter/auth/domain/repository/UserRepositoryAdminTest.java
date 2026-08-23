@@ -54,18 +54,20 @@ class UserRepositoryAdminTest {
                 UserStatus.ACTIVE
         ));
 
-        var result = userRepository.searchForAdmin(
+        var result = userRepository.searchForAdminByCursor(
                 "ItEr",
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(User::getId)
                 .containsExactly(
-                        emailMatch.getId(),
+                        nicknameMatch.getId(),
                         nameMatch.getId(),
-                        nicknameMatch.getId()
+                        emailMatch.getId()
                 );
     }
 
@@ -89,38 +91,28 @@ class UserRepositoryAdminTest {
                 "정지",
                 UserStatus.SUSPENDED
         ));
+        entityManager.clear();
 
-        var firstPage = userRepository.searchForAdmin(
+        var firstPage = userRepository.searchForAdminByCursor(
                 "iter",
                 UserStatus.ACTIVE,
-                PageRequest.of(
-                        0,
-                        1,
-                        Sort.by(
-                                Sort.Order.desc("createdAt"),
-                                Sort.Order.desc("id")
-                        )
-                )
+                null,
+                null,
+                PageRequest.of(0, 1)
         );
-        var secondPage = userRepository.searchForAdmin(
+        User cursor = firstPage.getFirst();
+        var secondPage = userRepository.searchForAdminByCursor(
                 "iter",
                 UserStatus.ACTIVE,
-                PageRequest.of(
-                        1,
-                        1,
-                        Sort.by(
-                                Sort.Order.desc("createdAt"),
-                                Sort.Order.desc("id")
-                        )
-                )
+                cursor.getCreatedAt(),
+                cursor.getId(),
+                PageRequest.of(0, 1)
         );
 
-        assertThat(firstPage.getTotalElements()).isEqualTo(2L);
-        assertThat(firstPage.getTotalPages()).isEqualTo(2);
-        assertThat(firstPage.getContent())
+        assertThat(firstPage)
                 .extracting(User::getId)
                 .containsExactly(newer.getId());
-        assertThat(secondPage.getContent())
+        assertThat(secondPage)
                 .extracting(User::getId)
                 .containsExactly(older.getId());
     }
@@ -140,15 +132,17 @@ class UserRepositoryAdminTest {
                 UserStatus.DELETED
         ));
 
-        var result = userRepository.searchForAdmin(
+        var result = userRepository.searchForAdminByCursor(
                 null,
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(User::getId)
-                .containsExactly(first.getId(), second.getId());
+                .containsExactly(second.getId(), first.getId());
     }
 
     @Test
@@ -172,21 +166,25 @@ class UserRepositoryAdminTest {
                 UserStatus.ACTIVE
         ));
 
-        var percentResult = userRepository.searchForAdmin(
+        var percentResult = userRepository.searchForAdminByCursor(
                 "%",
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
-        var underscoreResult = userRepository.searchForAdmin(
+        var underscoreResult = userRepository.searchForAdminByCursor(
                 "_",
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(percentResult.getContent())
+        assertThat(percentResult)
                 .extracting(User::getId)
                 .containsExactly(percentMatch.getId());
-        assertThat(underscoreResult.getContent())
+        assertThat(underscoreResult)
                 .extracting(User::getId)
                 .containsExactly(underscoreMatch.getId());
     }

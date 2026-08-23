@@ -13,18 +13,18 @@ import com.example.iter.auth.util.AdminUserMapper;
 import com.example.iter.common.audit.domain.entity.AdminActionTargetType;
 import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.service.AdminActionService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
 import com.example.iter.dispute.domain.repository.ReportRepository;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -70,29 +70,28 @@ public class AdminUserService {
             RentalStatus.RETURNING          // 반송 중이지만 등록자에게 아직 도착하지 않은 상태
     );
 
-    // 관리자 회원 목록을 검색 조건과 페이지 정보로 조회합니다.
+    // 관리자 회원 목록을 검색 조건과 커서 정보로 조회합니다.
     @Transactional(readOnly = true)
-    public PageResponse<AdminUserSummaryResponse> getUsers(AdminUserSearchRequest request) {
+    public CursorPageResponse<AdminUserSummaryResponse> getUsers(AdminUserSearchRequest request) {
         String keyword = StringUtils.hasText(request.keyword())
                 ? request.keyword().trim()
                 : null;
+        CursorKey cursorKey = CursorCodec.decode(request.cursor());
 
-        PageRequest pageable = PageRequest.of(
-                request.page(),
-                request.size(),
-                Sort.by(
-                        Sort.Order.desc("createdAt"),
-                        Sort.Order.desc("id")
-                )
-        );
-
-        Page<AdminUserSummaryResponse> users = userRepository.searchForAdmin(
+        List<User> users = userRepository.searchForAdminByCursor(
                 keyword,
                 request.status(),
-                pageable
-        ).map(AdminUserSummaryResponse::from);
+                cursorKey == null ? null : cursorKey.createdAt(),
+                cursorKey == null ? null : cursorKey.id(),
+                PageRequest.of(0, request.size() + 1)
+        );
 
-        return PageResponse.from(users);
+        return CursorPageResponse.from(
+                users,
+                request.size(),
+                AdminUserSummaryResponse::from,
+                user -> new CursorKey(user.getCreatedAt(), user.getId())
+        );
     }
 
     // 회원 정보와 거래, 연체, 신고 집계값을 조회합니다

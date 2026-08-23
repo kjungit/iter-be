@@ -5,15 +5,15 @@ import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.dto.response.UserSummaryResponse;
 import com.example.iter.common.config.RestApiSecurityTestConfig;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.common.security.CustomUserDetailsService;
 import com.example.iter.common.security.JwtTokenProvider;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
+import com.example.iter.dispute.dto.request.AdminReportSearchRequest;
 import com.example.iter.dispute.dto.request.AdminReportUpdateRequest;
-import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
@@ -87,7 +87,7 @@ class AdminReportApiControllerTest {
     }
 
     @Test
-    void 관리자가_신고_목록을_조건과_페이지로_조회한다() throws Exception {
+    void 관리자가_신고_목록을_조건과_커서로_조회한다() throws Exception {
         ReportSummaryResponse summary = new ReportSummaryResponse(
                 REPORT_ID,
                 new UserSummaryResponse(REPORTER_ID, "신고자"),
@@ -97,44 +97,48 @@ class AdminReportApiControllerTest {
                 ReportStatus.UNDER_REVIEW,
                 CREATED_AT
         );
-        when(adminReportService.getReports(any(ReportSearchRequest.class)))
-                .thenReturn(new PageResponse<>(List.of(summary), 0, 20, 1, 1));
+        when(adminReportService.getReports(any(AdminReportSearchRequest.class)))
+                .thenReturn(new CursorPageResponse<>(List.of(summary), "next-cursor", true, 20));
 
         mockMvc.perform(get("/api/v1/admin/reports")
                         .with(user(adminPrincipal))
                         .queryParam("targetType", "EQUIPMENT")
                         .queryParam("status", "UNDER_REVIEW")
-                        .queryParam("page", "0")
+                        .queryParam("cursor", "current-cursor")
                         .queryParam("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].reportId").value(REPORT_ID))
                 .andExpect(jsonPath("$.content[0].reporter.userId").value(REPORTER_ID))
                 .andExpect(jsonPath("$.content[0].targetType").value("EQUIPMENT"))
                 .andExpect(jsonPath("$.content[0].status").value("UNDER_REVIEW"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.nextCursor").value("next-cursor"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.page").doesNotExist())
+                .andExpect(jsonPath("$.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist());
 
-        ArgumentCaptor<ReportSearchRequest> captor = ArgumentCaptor.forClass(ReportSearchRequest.class);
+        ArgumentCaptor<AdminReportSearchRequest> captor = ArgumentCaptor.forClass(AdminReportSearchRequest.class);
         verify(adminReportService).getReports(captor.capture());
         assertThat(captor.getValue().targetType()).isEqualTo(ReportTargetType.EQUIPMENT);
         assertThat(captor.getValue().status()).isEqualTo(ReportStatus.UNDER_REVIEW);
-        assertThat(captor.getValue().page()).isZero();
+        assertThat(captor.getValue().cursor()).isEqualTo("current-cursor");
         assertThat(captor.getValue().size()).isEqualTo(20);
     }
 
     @Test
-    void 검색조건을_생략하면_기본_페이지값을_사용한다() throws Exception {
-        when(adminReportService.getReports(any(ReportSearchRequest.class)))
-                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+    void 검색조건을_생략하면_첫_커서와_기본_크기를_사용한다() throws Exception {
+        when(adminReportService.getReports(any(AdminReportSearchRequest.class)))
+                .thenReturn(new CursorPageResponse<>(List.of(), null, false, 20));
 
         mockMvc.perform(get("/api/v1/admin/reports")
                         .with(user(adminPrincipal)))
                 .andExpect(status().isOk());
 
-        ArgumentCaptor<ReportSearchRequest> captor = ArgumentCaptor.forClass(ReportSearchRequest.class);
+        ArgumentCaptor<AdminReportSearchRequest> captor = ArgumentCaptor.forClass(AdminReportSearchRequest.class);
         verify(adminReportService).getReports(captor.capture());
         assertThat(captor.getValue().targetType()).isNull();
         assertThat(captor.getValue().status()).isNull();
-        assertThat(captor.getValue().page()).isZero();
+        assertThat(captor.getValue().cursor()).isNull();
         assertThat(captor.getValue().size()).isEqualTo(20);
     }
 

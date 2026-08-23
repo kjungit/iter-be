@@ -346,9 +346,8 @@ public class EquipmentManagementService {
     }
 
     private EquipmentDetailResponse toDetailResponse(Long equipmentId) {
-        var row = equipmentRepository.findManagementDetailById(equipmentId)
+        Equipment equipment = equipmentRepository.findById(equipmentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
-        Equipment equipment = row.equipment();
         var owner = userRepository.findSummaryById(equipment.getOwnerId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         List<EquipmentImageResponse> images = equipmentImageRepository
@@ -371,8 +370,8 @@ public class EquipmentManagementService {
                 equipment.getConditionDetail(),
                 images,
                 new EquipmentOwnerResponse(owner.userId(), owner.nickName()),
-                row.averageRating(),
-                row.reviewCount(),
+                0.0,
+                0L,
                 equipment.getCreatedAt()
         );
     }

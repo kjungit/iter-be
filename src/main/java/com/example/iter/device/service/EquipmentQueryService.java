@@ -12,6 +12,7 @@ import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.dto.request.EquipmentAvailabilityRequest;
 import com.example.iter.device.dto.request.EquipmentEstimateRequest;
 import com.example.iter.device.dto.request.EquipmentSearchRequest;
+import com.example.iter.device.dto.request.EquipmentSort;
 import com.example.iter.device.dto.request.MyEquipmentSearchRequest;
 import com.example.iter.device.dto.request.EquipmentScheduleRequest;
 import com.example.iter.common.dto.response.PageResponse;
@@ -26,13 +27,14 @@ import com.example.iter.device.dto.response.EquipmentSummaryResponse;
 import com.example.iter.device.dto.response.MyEquipmentSummaryResponse;
 import com.example.iter.device.dto.response.EquipmentScheduleResponse;
 import com.example.iter.device.dto.response.RentalScheduleItemResponse;
-import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.device.support.EquipmentImageUrlResolver;
 import com.example.iter.reservation.domain.policy.RentalConflictPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,9 +100,8 @@ public class EquipmentQueryService {
 
     // 공개(ACTIVE) 장비는 누구나 조회 가능하고, 그 외 상태(숨김/점검/차단/삭제)는 소유자 본인만 조회할 수 있다.
     public EquipmentDetailResponse getEquipmentDetail(Long requesterId, Long equipmentId) {
-        var row = equipmentRepository.findManagementDetailById(equipmentId)
+        Equipment equipment = equipmentRepository.findById(equipmentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
-        var equipment = row.equipment();
         boolean isOwner = requesterId != null && equipment.isOwnedBy(requesterId);
         if (equipment.getStatus() != EquipmentStatus.ACTIVE && !isOwner) {
             throw new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND);
@@ -127,8 +128,8 @@ public class EquipmentQueryService {
                 equipment.getConditionDetail(),
                 images,
                 new EquipmentOwnerResponse(owner.userId(), owner.nickName()),
-                row.averageRating(),
-                row.reviewCount(),
+                0.0,
+                0L,
                 equipment.getCreatedAt()
         );
     }
@@ -160,31 +161,27 @@ public class EquipmentQueryService {
     }
 
     public EquipmentListResponse getEquipmentList(EquipmentSearchRequest request) {
-        Page<EquipmentSearchRow> rows = equipmentRepository.searchPublicEquipment(
-                escapeLikePattern(request.keyword()),
-                request.category(),
-                request.minPrice(),
-                request.maxPrice(),
-                request.startDate(),
-                request.endDate(),
-                RentalConflictPolicy.nonOccupyingStatuses(),
-                request.sort().name(),
-                PageRequest.of(request.page(), request.size())
-        );
+        Page<Equipment> equipmentPage = findPublicEquipment(request);
 
-        Map<Long, String> thumbnailUrls = findThumbnailUrls(rows.getContent());
-        List<EquipmentSummaryResponse> content = rows.getContent().stream()
-                .map(row -> toResponse(row, thumbnailUrls.get(row.equipment().getId())))
+        List<Long> equipmentIds = equipmentPage.getContent().stream()
+                .map(Equipment::getId)
+                .toList();
+        Map<Long, String> thumbnailUrls = findThumbnailUrls(equipmentIds);
+        List<EquipmentSummaryResponse> content = equipmentPage.getContent().stream()
+                .map(equipment -> toResponse(
+                        equipment,
+                        thumbnailUrls.get(equipment.getId())
+                ))
                 .toList();
 
         return new EquipmentListResponse(
                 content,
-                rows.getNumber(),
-                rows.getSize(),
-                rows.getTotalElements(),
-                rows.getTotalPages(),
-                rows.isFirst(),
-                rows.isLast()
+                equipmentPage.getNumber(),
+                equipmentPage.getSize(),
+                equipmentPage.getTotalElements(),
+                equipmentPage.getTotalPages(),
+                equipmentPage.isFirst(),
+                equipmentPage.isLast()
         );
     }
 
@@ -192,16 +189,13 @@ public class EquipmentQueryService {
             Long ownerId,
             MyEquipmentSearchRequest request
     ) {
-        Page<EquipmentSearchRow> rows = equipmentRepository.searchMyEquipment(
-                ownerId,
-                request.status(),
-                request.sort().name(),
-                PageRequest.of(request.page(), request.size())
-        );
-        Map<Long, String> thumbnailUrls = findThumbnailUrls(rows.getContent());
-        Page<MyEquipmentSummaryResponse> responsePage = rows.map(row -> {
-            Equipment equipment = row.equipment();
-            return new MyEquipmentSummaryResponse(
+        Page<Equipment> equipmentPage = findMyEquipment(ownerId, request);
+        List<Long> equipmentIds = equipmentPage.getContent().stream()
+                .map(Equipment::getId)
+                .toList();
+        Map<Long, String> thumbnailUrls = findThumbnailUrls(equipmentIds);
+        Page<MyEquipmentSummaryResponse> responsePage = equipmentPage.map(equipment ->
+                new MyEquipmentSummaryResponse(
                     equipment.getId(),
                     equipment.getName(),
                     equipment.getCategory(),
@@ -211,8 +205,8 @@ public class EquipmentQueryService {
                     thumbnailUrls.get(equipment.getId()),
                     equipment.getAvailableFrom(),
                     equipment.getAvailableTo()
-            );
-        });
+                )
+        );
         return PageResponse.from(responsePage);
     }
 
@@ -241,11 +235,7 @@ public class EquipmentQueryService {
                 equipmentId, request.from(), request.to(), rentals);
     }
 
-    private Map<Long, String> findThumbnailUrls(List<EquipmentSearchRow> rows) {
-        List<Long> equipmentIds = rows.stream()
-                .map(row -> row.equipment().getId())
-                .toList();
-
+    private Map<Long, String> findThumbnailUrls(List<Long> equipmentIds) {
         if (equipmentIds.isEmpty()) {
             return Map.of();
         }
@@ -258,8 +248,57 @@ public class EquipmentQueryService {
         return thumbnailUrls;
     }
 
-    private EquipmentSummaryResponse toResponse(EquipmentSearchRow row, String thumbnailUrl) {
-        var equipment = row.equipment();
+    private Page<Equipment> findPublicEquipment(EquipmentSearchRequest request) {
+        String keyword = escapeLikePattern(request.keyword());
+        return equipmentRepository.searchPublicEquipment(
+                keyword,
+                request.category(),
+                request.minPrice(),
+                request.maxPrice(),
+                request.startDate(),
+                request.endDate(),
+                RentalConflictPolicy.nonOccupyingStatuses(),
+                PageRequest.of(request.page(), request.size(), equipmentSort(request.sort()))
+        );
+    }
+
+    private Page<Equipment> findMyEquipment(
+            Long ownerId,
+            MyEquipmentSearchRequest request
+    ) {
+        Pageable pageable = PageRequest.of(
+                request.page(),
+                request.size(),
+                equipmentSort(request.sort())
+        );
+        return request.status() == null
+                ? equipmentRepository.findByOwnerId(ownerId, pageable)
+                : equipmentRepository.findByOwnerIdAndStatus(ownerId, request.status(), pageable);
+    }
+
+    private Sort equipmentSort(EquipmentSort sort) {
+        return switch (sort) {
+            case LATEST -> Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            );
+            case PRICE_ASC -> Sort.by(
+                    Sort.Order.asc("dailyPrice"),
+                    Sort.Order.desc("id")
+            );
+            case PRICE_DESC -> Sort.by(
+                    Sort.Order.desc("dailyPrice"),
+                    Sort.Order.desc("id")
+            );
+            // 리뷰 기능은 비활성화됐지만 기존 요청 계약을 유지하기 위해 최신순으로 처리합니다.
+            case RATING_DESC -> Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            );
+        };
+    }
+
+    private EquipmentSummaryResponse toResponse(Equipment equipment, String thumbnailUrl) {
         return new EquipmentSummaryResponse(
                 equipment.getId(),
                 equipment.getName(),
@@ -269,8 +308,8 @@ public class EquipmentQueryService {
                 equipment.getAvailableTo(),
                 equipment.getProductCondition(),
                 thumbnailUrl,
-                row.averageRating(),
-                row.reviewCount()
+                0.0,
+                0L
         );
     }
 

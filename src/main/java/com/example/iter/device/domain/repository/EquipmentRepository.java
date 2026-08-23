@@ -3,8 +3,6 @@ package com.example.iter.device.domain.repository;
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentStatus;
-import com.example.iter.device.service.model.EquipmentDetailRow;
-import com.example.iter.device.service.model.EquipmentSearchRow;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -19,34 +17,17 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
     Optional<Equipment> findByIdAndStatus(Long id, EquipmentStatus status);
 
-    @Query("""
-            select new com.example.iter.device.service.model.EquipmentDetailRow(
-                e,
-                coalesce(avg(r.rating), 0.0),
-                count(r.id)
-            )
-            from Equipment e
-            left join Review r on r.equipment = e
-            where e.id = :equipmentId
-            group by e
-            """)
-    Optional<EquipmentDetailRow> findManagementDetailById(@Param("equipmentId") Long equipmentId);
-
     @Query(
             value = """
-                    select new com.example.iter.device.service.model.EquipmentSearchRow(
-                        e,
-                        coalesce(avg(r.rating), 0.0),
-                        count(r.id)
-                    )
+                    select e
                     from Equipment e
-                    left join Review r on r.equipment = e
                     where e.status = EquipmentStatus.ACTIVE
                       and (:keyword is null or lower(e.name) like lower(concat('%', :keyword, '%')) escape '\\')
                       and (:category is null or e.category = :category)
@@ -67,14 +48,6 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
                               )
                           )
                       )
-                    group by e
-                    order by
-                      case when :sort = 'LATEST' then e.createdAt end desc,
-                      case when :sort = 'PRICE_ASC' then e.dailyPrice end asc,
-                      case when :sort = 'PRICE_DESC' then e.dailyPrice end desc,
-                      case when :sort = 'RATING_DESC' then coalesce(avg(r.rating), 0.0) end desc,
-                      case when :sort = 'RATING_DESC' then count(r.id) end desc,
-                      e.id desc
                     """,
             countQuery = """
                     select count(e.id)
@@ -101,7 +74,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
                       )
                     """
     )
-    Page<EquipmentSearchRow> searchPublicEquipment(
+    Page<Equipment> searchPublicEquipment(
             @Param("keyword") String keyword,
             @Param("category") EquipmentCategory category,
             @Param("minPrice") BigDecimal minPrice,
@@ -109,41 +82,14 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses,
-            @Param("sort") String sort,
             Pageable pageable
     );
 
-    @Query(
-            value = """
-                    select new com.example.iter.device.service.model.EquipmentSearchRow(
-                        e,
-                        coalesce(avg(r.rating), 0.0),
-                        count(r.id)
-                    )
-                    from Equipment e
-                    left join Review r on r.equipment = e
-                    where e.ownerId = :ownerId
-                      and (:status is null or e.status = :status)
-                    group by e
-                    order by
-                      case when :sort = 'LATEST' then e.createdAt end desc,
-                      case when :sort = 'PRICE_ASC' then e.dailyPrice end asc,
-                      case when :sort = 'PRICE_DESC' then e.dailyPrice end desc,
-                      case when :sort = 'RATING_DESC' then coalesce(avg(r.rating), 0.0) end desc,
-                      case when :sort = 'RATING_DESC' then count(r.id) end desc,
-                      e.id desc
-                    """,
-            countQuery = """
-                    select count(e.id)
-                    from Equipment e
-                    where e.ownerId = :ownerId
-                      and (:status is null or e.status = :status)
-                    """
-    )
-    Page<EquipmentSearchRow> searchMyEquipment(
-            @Param("ownerId") Long ownerId,
-            @Param("status") EquipmentStatus status,
-            @Param("sort") String sort,
+    Page<Equipment> findByOwnerId(Long ownerId, Pageable pageable);
+
+    Page<Equipment> findByOwnerIdAndStatus(
+            Long ownerId,
+            EquipmentStatus status,
             Pageable pageable
     );
 
@@ -174,11 +120,19 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
                 :status is null
                 or e.status = :status
               )
+          and (
+                :cursorCreatedAt is null
+                or e.createdAt < :cursorCreatedAt
+                or (e.createdAt = :cursorCreatedAt and e.id < :cursorId)
+              )
+        order by e.createdAt desc, e.id desc
         """)
-    Page<Equipment> searchForAdmin(
+    List<Equipment> searchForAdminByCursor(
             @Param("keyword") String keyword,
             @Param("category") String category,
             @Param("status") EquipmentStatus status,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 

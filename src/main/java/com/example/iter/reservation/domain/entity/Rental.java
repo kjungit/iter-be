@@ -16,7 +16,27 @@ import java.time.LocalDateTime;
 // 기획서 5-1/8-1(Day5)에 명시된 "JPA 낙관적 락(@Version)" 동시성 제어를 구현하려면 반드시 필요한 컬럼이라 추가해두었다.
 // -> ERD 원본(drawSQL) 업데이트가 필요하니 팀 공유 바랍니다.
 @Entity
-@Table(name = "rental")
+@Table(
+        name = "rental",
+        indexes = {
+                @Index(
+                        name = "idx_rental_renter_created_id",
+                        columnList = "renter_id, created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_rental_equipment_created_id",
+                        columnList = "equipment_id, created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_rental_equipment_period",
+                        columnList = "equipment_id, start_date, end_date, id, status"
+                ),
+                @Index(
+                        name = "idx_rental_status_created",
+                        columnList = "status, created_at"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -14,15 +14,14 @@ public record AdminEquipmentSearchRequest(
 
         EquipmentStatus status,
 
-        @Min(value = 0, message = "페이지 번호는 0 이상이어야 합니다.")
-        Integer page,
+        @Size(max = 200, message = "커서는 200자 이하여야 합니다.")
+        String cursor,
 
         @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다.")
         @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다.")
         Integer size
 ) {
     public AdminEquipmentSearchRequest {
-        page = page == null ? 0 : page;
         size = size == null ? 20 : size;
     }
 }
