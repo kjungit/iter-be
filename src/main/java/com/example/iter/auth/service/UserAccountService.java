@@ -13,6 +13,7 @@ import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.reservation.domain.policy.RentalStatusPolicy;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserAccountService {
 
@@ -42,6 +44,7 @@ public class UserAccountService {
                 request.nickname() == null ? user.getNickname() : request.nickname(),
                 request.phone() == null ? user.getPhone() : request.phone()
         );
+        log.info("회원 프로필 변경 처리: userId={}", userId);
         return UserResponse.from(user);
     }
 
@@ -62,6 +65,7 @@ public class UserAccountService {
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));
         refreshTokenService.revokeAllByUserId(userId);
+        log.info("비밀번호 변경 및 기존 세션 만료 처리: userId={}", userId);
     }
 
     @Transactional
@@ -77,6 +81,7 @@ public class UserAccountService {
         equipmentRepository.updateStatusByOwnerId(userId, EquipmentStatus.DELETED, withdrawnAt);
         user.withdraw(withdrawnAt);
         refreshTokenService.revokeAllByUserId(userId);
+        log.info("회원 탈퇴 처리: userId={}", userId);
     }
 
     private void validateWithdrawalPassword(User user, String rawPassword) {

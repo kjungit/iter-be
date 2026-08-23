@@ -24,6 +24,7 @@ import com.example.iter.dispute.domain.repository.ReportRepository;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Set;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AdminUserService {
 
@@ -130,6 +132,14 @@ public class AdminUserService {
         );
 
         userRepository.flush();
+
+        log.info(
+                "관리자 회원 상태 변경 처리: adminId={}, userId={}, action={}, status={}",
+                adminId,
+                userId,
+                action,
+                user.getStatus()
+        );
 
         return AdminUserStatusResponse.from(user);
     }

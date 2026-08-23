@@ -85,6 +85,8 @@ public class RefreshTokenService {
         RefreshToken savedReplacement = refreshTokenRepository.saveAndFlush(replacementToken);
         currentToken.rotateTo(savedReplacement.getId(), now);
 
+        log.info("인증 토큰 재발급 처리: userId={}", user.getId());
+
         return new IssuedTokenPair(
                 jwtTokenProvider.generateAccessToken(user),
                 newRawRefreshToken

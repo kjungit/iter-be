@@ -14,11 +14,13 @@ import com.example.iter.auth.service.model.OAuthExchangeResult;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class OAuth2AuthService {
 
@@ -67,6 +69,8 @@ public class OAuth2AuthService {
 
         saveOAuthAccount(user.getId(), pending);
 
+        log.info("OAuth 회원가입 처리: userId={}, provider={}", user.getId(), pending.provider());
+
         return authService.issueTokens(user);
     }
 
@@ -93,12 +97,15 @@ public class OAuth2AuthService {
         }
 
         saveOAuthAccount(authenticatedUserId, pending);
+        log.info("OAuth 계정 연결 처리: userId={}, provider={}", authenticatedUserId, pending.provider());
     }
 
     private OAuthExchangeResult authenticateLinkedUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED));
-        return new OAuthExchangeResult.Authenticated(authService.issueTokens(user));
+        IssuedTokenPair tokenPair = authService.issueTokens(user);
+        log.info("OAuth 로그인 처리: userId={}", userId);
+        return new OAuthExchangeResult.Authenticated(tokenPair);
     }
 
     private OAuthExchangeResult requireSignupOrLink(ConsumedOAuthToken pending) {
