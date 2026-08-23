@@ -5,9 +5,11 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.audit.domain.entity.AdminActionTargetType;
 import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.service.AdminActionService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
@@ -19,9 +21,7 @@ import com.example.iter.device.dto.response.AdminEquipmentDetailResponse;
 import com.example.iter.device.dto.response.AdminEquipmentSummaryResponse;
 import com.example.iter.device.util.AdminEquipmentMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -42,38 +42,35 @@ public class AdminEquipmentService {
     private final AdminActionService adminActionService;
     private final AdminEquipmentMapper adminEquipmentMapper;
 
-    // 관리자가 장비명, 카테고리, 상태 조건으로 전체 장비 목록을 조회합니다.
+    // 관리자가 장비명, 카테고리, 상태 조건으로 전체 장비 목록을 커서 조회합니다.
     @Transactional(readOnly = true)
-    public PageResponse<AdminEquipmentSummaryResponse> getEquipments(AdminEquipmentSearchRequest request) {
+    public CursorPageResponse<AdminEquipmentSummaryResponse> getEquipments(AdminEquipmentSearchRequest request) {
         String keyword = normalize(request.keyword());
         String category = normalize(request.category());
+        CursorKey cursorKey = CursorCodec.decode(request.cursor());
 
-        PageRequest pageable = PageRequest.of(
-                request.page(),
-                request.size(),
-                Sort.by(
-                        Sort.Order.desc("createdAt"),
-                        Sort.Order.desc("id")
-                )
-        );
-
-        Page<Equipment> equipmentPage = equipmentRepository.searchForAdmin(
+        List<Equipment> equipment = equipmentRepository.searchForAdminByCursor(
                 keyword,
                 category,
                 request.status(),
-                pageable
+                cursorKey == null ? null : cursorKey.createdAt(),
+                cursorKey == null ? null : cursorKey.id(),
+                PageRequest.of(0, request.size() + 1)
         );
 
-        Map<Long, User> ownerMap = loadOwners(equipmentPage.getContent());
-        Map<Long, String> thumbnailMap = loadThumbnails(equipmentPage.getContent());
+        Map<Long, User> ownerMap = loadOwners(equipment);
+        Map<Long, String> thumbnailMap = loadThumbnails(equipment);
 
-        Page<AdminEquipmentSummaryResponse> responsePage = equipmentPage.map(equipment -> adminEquipmentMapper.toSummary(
+        return CursorPageResponse.from(
                 equipment,
-                getRequiredOwner(ownerMap, equipment.getOwnerId()),
-                thumbnailMap.get(equipment.getId())
-        ));
-
-        return PageResponse.from(responsePage);
+                request.size(),
+                item -> adminEquipmentMapper.toSummary(
+                        item,
+                        getRequiredOwner(ownerMap, item.getOwnerId()),
+                        thumbnailMap.get(item.getId())
+                ),
+                item -> new CursorKey(item.getCreatedAt(), item.getId())
+        );
     }
 
     // 관리자가 특정 장비의 상세 정보와 전체 이미지를 조회합니다.

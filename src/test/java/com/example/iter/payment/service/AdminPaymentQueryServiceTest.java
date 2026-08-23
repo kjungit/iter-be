@@ -2,6 +2,8 @@ package com.example.iter.payment.service;
 
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.AdminPaymentQueryRepository;
 import com.example.iter.payment.dto.request.AdminPaymentSearchRequest;
@@ -16,8 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
@@ -50,80 +50,97 @@ class AdminPaymentQueryServiceTest {
     private AdminPaymentQueryService adminPaymentQueryService;
 
     @Test
-    void 결제_목록은_검색어와_날짜를_정규화하고_최신순으로_조회한다() {
+    void 결제_목록은_검색어와_날짜와_커서를_정규화해_조회한다() {
+        CursorKey cursorKey = new CursorKey(LocalDateTime.of(2026, 8, 25, 10, 0), 50L);
         AdminPaymentSearchRequest request = new AdminPaymentSearchRequest(
                 "  맥북  ",
                 PaymentStatus.PAID,
                 LocalDate.of(2026, 8, 1),
                 LocalDate.of(2026, 8, 31),
-                1,
+                CursorCodec.encode(cursorKey),
                 10
         );
         AdminPaymentSummaryRow row = summaryRow();
-        when(adminPaymentQueryRepository.searchForAdmin(
+        when(adminPaymentQueryRepository.searchForAdminByCursor(
                 eq("맥북"),
                 eq(PaymentStatus.PAID),
                 eq(LocalDateTime.of(2026, 8, 1, 0, 0)),
                 eq(LocalDateTime.of(2026, 9, 1, 0, 0)),
+                eq(cursorKey.createdAt()),
+                eq(cursorKey.id()),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(row), PageRequest.of(1, 10), 11));
+        )).thenReturn(List.of(row));
 
         var response = adminPaymentQueryService.getPayments(request);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().paymentId()).isEqualTo(PAYMENT_ID);
         assertThat(response.content().getFirst().equipmentName()).isEqualTo("맥북 프로");
-        assertThat(response.page()).isEqualTo(1);
         assertThat(response.size()).isEqualTo(10);
-        assertThat(response.totalElements()).isEqualTo(11);
+        assertThat(response.hasNext()).isFalse();
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(adminPaymentQueryRepository).searchForAdmin(
+        verify(adminPaymentQueryRepository).searchForAdminByCursor(
                 eq("맥북"),
                 eq(PaymentStatus.PAID),
                 eq(LocalDateTime.of(2026, 8, 1, 0, 0)),
                 eq(LocalDateTime.of(2026, 9, 1, 0, 0)),
+                eq(cursorKey.createdAt()),
+                eq(cursorKey.id()),
                 pageableCaptor.capture()
         );
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(11);
     }
 
     @Test
-    void 빈_검색어와_날짜는_null로_전달하고_기본_페이징을_사용한다() {
-        when(adminPaymentQueryRepository.searchForAdmin(
+    void 빈_검색어와_날짜와_커서는_null로_전달하고_기본_크기를_사용한다() {
+        when(adminPaymentQueryRepository.searchWithoutKeywordForAdminByCursor(
+                isNull(),
                 isNull(),
                 isNull(),
                 isNull(),
                 isNull(),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        )).thenReturn(List.of());
 
         var response = adminPaymentQueryService.getPayments(
                 new AdminPaymentSearchRequest("  ", null, null, null, null, null)
         );
 
         assertThat(response.content()).isEmpty();
-        assertThat(response.page()).isZero();
         assertThat(response.size()).isEqualTo(20);
-    }
-
-    @Test
-    void 퍼센트와_언더스코어_검색어를_변경하지_않고_전달한다() {
-        when(adminPaymentQueryRepository.searchForAdmin(
-                eq("%_"),
+        assertThat(response.hasNext()).isFalse();
+        verify(adminPaymentQueryRepository).searchWithoutKeywordForAdminByCursor(
+                isNull(),
+                isNull(),
                 isNull(),
                 isNull(),
                 isNull(),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        );
+    }
+
+    @Test
+    void 퍼센트와_언더스코어_검색어를_변경하지_않고_전달한다() {
+        when(adminPaymentQueryRepository.searchForAdminByCursor(
+                eq("%_"),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                any(Pageable.class)
+        )).thenReturn(List.of());
 
         adminPaymentQueryService.getPayments(
-                new AdminPaymentSearchRequest("  %_  ", null, null, null, 0, 20)
+                new AdminPaymentSearchRequest("  %_  ", null, null, null, null, 20)
         );
 
-        verify(adminPaymentQueryRepository).searchForAdmin(
+        verify(adminPaymentQueryRepository).searchForAdminByCursor(
                 eq("%_"),
+                isNull(),
+                isNull(),
                 isNull(),
                 isNull(),
                 isNull(),

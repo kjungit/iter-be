@@ -8,10 +8,8 @@ import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.entity.EquipmentImage;
 import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
-import com.example.iter.device.domain.entity.Review;
 import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
-import com.example.iter.device.domain.repository.ReviewRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,26 +44,20 @@ class EquipmentDetailApiTest {
     @Autowired
     private EquipmentImageRepository equipmentImageRepository;
     @Autowired
-    private ReviewRepository reviewRepository;
-    @Autowired
     private JwtTokenProvider jwtTokenProvider;
-
     @BeforeEach
     void setUp() {
-        reviewRepository.deleteAll();
         equipmentImageRepository.deleteAll();
         equipmentRepository.deleteAll();
     }
 
     @Test
-    void 공개_장비의_상세_이미지_소유자_평점을_인증_없이_조회한다() throws Exception {
+    void 공개_장비의_상세_이미지와_소유자를_인증_없이_조회한다() throws Exception {
         User owner = saveOwner("카메라주인");
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
         saveImage(equipment, "https://example.com/images/second.jpg", 1, false);
         EquipmentImage first = saveImage(
                 equipment, "https://example.com/images/first.jpg", 0, true);
-        saveReview(equipment, 4, 101L);
-        saveReview(equipment, 5, 102L);
 
         mockMvc.perform(get("/api/v1/devices/{equipmentId}", equipment.getId()))
                 .andExpect(status().isOk())
@@ -88,13 +80,13 @@ class EquipmentDetailApiTest {
                 .andExpect(jsonPath("$.images[1].sortOrder").value(1))
                 .andExpect(jsonPath("$.owner.id").value(owner.getId()))
                 .andExpect(jsonPath("$.owner.nickname").value("카메라주인"))
-                .andExpect(jsonPath("$.averageRating").value(4.5))
-                .andExpect(jsonPath("$.reviewCount").value(2))
+                .andExpect(jsonPath("$.averageRating").value(0.0))
+                .andExpect(jsonPath("$.reviewCount").value(0))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty());
     }
 
     @Test
-    void 이미지와_리뷰가_없으면_빈_목록과_0을_반환한다() throws Exception {
+    void 이미지가_없으면_빈_목록과_비활성화된_리뷰_기본값을_반환한다() throws Exception {
         User owner = saveOwner("장비주인");
         Equipment equipment = saveEquipment(owner.getId(), EquipmentStatus.ACTIVE);
 
@@ -194,15 +186,5 @@ class EquipmentDetailApiTest {
 
     private String bearer(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user);
-    }
-
-    private void saveReview(Equipment equipment, int rating, long rentalId) {
-        reviewRepository.save(Review.builder()
-                .rentalId(rentalId)
-                .equipment(equipment)
-                .userId(rentalId)
-                .rating(rating)
-                .content("상세 조회 테스트 리뷰")
-                .build());
     }
 }

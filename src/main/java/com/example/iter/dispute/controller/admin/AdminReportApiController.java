@@ -1,10 +1,10 @@
 package com.example.iter.dispute.controller.admin;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.dispute.controller.admin.spec.AdminReportApiSpec;
+import com.example.iter.dispute.dto.request.AdminReportSearchRequest;
 import com.example.iter.dispute.dto.request.AdminReportUpdateRequest;
-import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import com.example.iter.dispute.service.AdminReportService;
@@ -33,7 +33,7 @@ public class AdminReportApiController implements AdminReportApiSpec {
     // 관리자가 대상 유형과 처리 상태 조건으로 전체 신고 목록을 조회합니다.
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<ReportSummaryResponse>> getReports(@ModelAttribute ReportSearchRequest request) {
+    public ResponseEntity<CursorPageResponse<ReportSummaryResponse>> getReports(@ModelAttribute AdminReportSearchRequest request) {
         return ResponseEntity.ok(adminReportService.getReports(request));
     }
 

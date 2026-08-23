@@ -11,7 +11,19 @@ import java.util.UUID;
 // ERD PAYMENT 엔티티 (mock 결제 — 기획서 4-1 #6, 9-1 참고)
 // rentalId는 reservation 도메인 PK를 값으로만 참조 (도메인 간 결합 최소화)
 @Entity
-@Table(name = "payment")
+@Table(
+        name = "payment",
+        indexes = {
+                @Index(
+                        name = "idx_payment_created_id",
+                        columnList = "created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_payment_status_created_id",
+                        columnList = "status, created_at DESC, id DESC"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

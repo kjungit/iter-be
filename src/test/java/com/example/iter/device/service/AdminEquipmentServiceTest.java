@@ -29,8 +29,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
@@ -88,15 +86,17 @@ class AdminEquipmentServiceTest {
                 "  맥북  ",
                 "  LAPTOP  ",
                 EquipmentStatus.ACTIVE,
-                1,
+                null,
                 10
         );
-        when(equipmentRepository.searchForAdmin(
+        when(equipmentRepository.searchForAdminByCursor(
                 eq("맥북"),
                 eq("LAPTOP"),
                 eq(EquipmentStatus.ACTIVE),
+                isNull(),
+                isNull(),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(1, 10), 12));
+        )).thenReturn(List.of(first, second));
         when(userRepository.findAllById(anyCollection())).thenReturn(List.of(owner));
         when(equipmentImageRepository
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(anyCollection()))
@@ -110,19 +110,20 @@ class AdminEquipmentServiceTest {
                 .isEqualTo("https://example.com/first.jpg");
         assertThat(response.content().get(1).thumbnailUrl())
                 .isEqualTo("https://example.com/air.jpg");
-        assertThat(response.page()).isEqualTo(1);
         assertThat(response.size()).isEqualTo(10);
-        assertThat(response.totalElements()).isEqualTo(12);
+        assertThat(response.hasNext()).isFalse();
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(equipmentRepository).searchForAdmin(
+        verify(equipmentRepository).searchForAdminByCursor(
                 eq("맥북"),
                 eq("LAPTOP"),
                 eq(EquipmentStatus.ACTIVE),
+                isNull(),
+                isNull(),
                 pageableCaptor.capture()
         );
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(11);
         verify(userRepository).findAllById(anyCollection());
         verify(equipmentImageRepository)
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(anyCollection());
@@ -130,19 +131,20 @@ class AdminEquipmentServiceTest {
 
     @Test
     void 빈_검색어와_카테고리는_null로_변환하고_빈_목록이면_추가_조회하지_않는다() {
-        when(equipmentRepository.searchForAdmin(
+        when(equipmentRepository.searchForAdminByCursor(
+                isNull(),
+                isNull(),
                 isNull(),
                 isNull(),
                 isNull(),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        )).thenReturn(List.of());
 
         var response = adminEquipmentService.getEquipments(
                 new AdminEquipmentSearchRequest("  ", " ", null, null, null)
         );
 
         assertThat(response.content()).isEmpty();
-        assertThat(response.page()).isZero();
         assertThat(response.size()).isEqualTo(20);
         verify(userRepository, never()).findAllById(anyCollection());
         verify(equipmentImageRepository, never())
@@ -151,19 +153,23 @@ class AdminEquipmentServiceTest {
 
     @Test
     void 특수문자_검색어를_변경하지_않고_저장소에_전달한다() {
-        when(equipmentRepository.searchForAdmin(
+        when(equipmentRepository.searchForAdminByCursor(
                 eq("%_"),
+                isNull(),
+                isNull(),
                 isNull(),
                 isNull(),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        )).thenReturn(List.of());
 
         adminEquipmentService.getEquipments(
-                new AdminEquipmentSearchRequest("  %_  ", null, null, 0, 20)
+                new AdminEquipmentSearchRequest("  %_  ", null, null, null, 20)
         );
 
-        verify(equipmentRepository).searchForAdmin(
+        verify(equipmentRepository).searchForAdminByCursor(
                 eq("%_"),
+                isNull(),
+                isNull(),
                 isNull(),
                 isNull(),
                 any(Pageable.class)
@@ -173,15 +179,16 @@ class AdminEquipmentServiceTest {
     @Test
     void 장비_목록의_등록자_정보가_없으면_조회할_수_없다() {
         Equipment equipment = equipment(EQUIPMENT_ID, OWNER_ID, EquipmentStatus.ACTIVE, "맥북 프로");
-        when(equipmentRepository.searchForAdmin(any(), any(), any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(equipment)));
+        when(equipmentRepository.searchForAdminByCursor(
+                any(), any(), any(), any(), any(), any(Pageable.class)
+        )).thenReturn(List.of(equipment));
         when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
         when(equipmentImageRepository
                 .findByEquipment_IdInAndThumbnailTrueOrderBySortOrderAscIdAsc(anyCollection()))
                 .thenReturn(List.of());
 
         assertThatThrownBy(() -> adminEquipmentService.getEquipments(
-                new AdminEquipmentSearchRequest(null, null, null, 0, 20)
+                new AdminEquipmentSearchRequest(null, null, null, null, 20)
         ))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")

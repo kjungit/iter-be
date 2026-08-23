@@ -4,6 +4,7 @@ import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -85,6 +86,16 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     // 동일 거래의 반납 최종 확인이 동시에 처리되지 않도록 거래 행을 비관적 쓰기 락으로 조회합니다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Rental> findWithLockById(Long rentalId);
+    /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약 ID를 최대 한 건 조회합니다. */
+    @Query(
+            "SELECT r.id " +
+            "FROM Rental r " +
+            "WHERE r.equipmentId = :equipmentId " +
+            "AND r.status NOT IN :excludedStatuses " +
+            "AND r.startDate <= :endDate " +
+            "AND r.endDate >= :startDate"
+    )
+    List<Long> findConflictingOccupyingRentalIds(
     /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약이 있는지 확인합니다. */
     @Query("""
             select case when count(r) > 0 then true else false end
@@ -98,8 +109,25 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
-                                            );
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses,
+            Pageable pageable
+    );
+
+    /** 충돌 행 전체를 세지 않고 첫 번째 ID가 발견되면 조회를 종료합니다. */
+    default boolean existsConflictingOccupyingRental(
+            Long equipmentId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Collection<RentalStatus> excludedStatuses
+    ) {
+        return !findConflictingOccupyingRentalIds(
+                equipmentId,
+                startDate,
+                endDate,
+                excludedStatuses,
+                PageRequest.of(0, 1)
+        ).isEmpty();
+    }
 
     /**
      * 겹침 확인용 락 읽기 버전. equipment를 FOR UPDATE로 잠근 뒤에도 이 조회가 일반 SELECT면
@@ -132,18 +160,35 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     boolean existsByEquipmentIdAndStatus(Long equipmentId, RentalStatus status);
 
     @Query("""
-            select case when count(r.id) > 0 then true else false end
+            select r.id
             from Rental r
             where r.equipmentId = :equipmentId
               and r.status not in :excludedStatuses
               and (r.startDate < :availableFrom or r.endDate > :availableTo)
             """)
-    boolean existsOccupyingRentalOutsidePeriod(
+    List<Long> findOccupyingRentalOutsidePeriodIds(
             @Param("equipmentId") Long equipmentId,
             @Param("availableFrom") LocalDate availableFrom,
             @Param("availableTo") LocalDate availableTo,
-            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
+            @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses,
+            Pageable pageable
     );
+
+    /** 허용 기간을 벗어난 점유 거래도 첫 번째 ID만 확인합니다. */
+    default boolean existsOccupyingRentalOutsidePeriod(
+            Long equipmentId,
+            LocalDate availableFrom,
+            LocalDate availableTo,
+            Collection<RentalStatus> excludedStatuses
+    ) {
+        return !findOccupyingRentalOutsidePeriodIds(
+                equipmentId,
+                availableFrom,
+                availableTo,
+                excludedStatuses,
+                PageRequest.of(0, 1)
+        ).isEmpty();
+    }
 
     @Query("""
             select r

@@ -7,7 +7,7 @@ import com.example.iter.auth.dto.response.AdminUserDetailResponse;
 import com.example.iter.auth.dto.response.AdminUserStatusResponse;
 import com.example.iter.auth.dto.response.AdminUserSummaryResponse;
 import com.example.iter.auth.service.AdminUserService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +28,7 @@ public class AdminUserApiController implements AdminUserApiSpec {
     // 관리자 회원 목록을 조회합니다
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<AdminUserSummaryResponse>> getUsers(@ModelAttribute AdminUserSearchRequest request) {
+    public ResponseEntity<CursorPageResponse<AdminUserSummaryResponse>> getUsers(@ModelAttribute AdminUserSearchRequest request) {
         return ResponseEntity.ok(adminUserService.getUsers(request));
     }
 

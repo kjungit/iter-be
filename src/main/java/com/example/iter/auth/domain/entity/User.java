@@ -10,7 +10,19 @@ import java.time.LocalDateTime;
 // ERD USER 엔티티
 // id, email(UK), password, name, nickname, phone, role, status, created_at, updated_at
 @Entity
-@Table(name = "users") // "user"는 MySQL 예약어와 충돌 위험이 있어 users로 지정
+@Table(
+        name = "users", // "user"는 MySQL 예약어와 충돌 위험이 있어 users로 지정
+        indexes = {
+                @Index(
+                        name = "idx_users_created_id",
+                        columnList = "created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_users_status_created_id",
+                        columnList = "status, created_at DESC, id DESC"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

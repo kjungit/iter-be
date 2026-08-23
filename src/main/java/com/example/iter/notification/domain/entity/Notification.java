@@ -8,7 +8,19 @@ import java.time.LocalDateTime;
 
 // receiverId/rentalId는 각각 auth/reservation 도메인 PK를 값으로만 참조 (도메인 간 결합 최소화 컨벤션).
 @Entity
-@Table(name = "notification")
+@Table(
+        name = "notification",
+        indexes = {
+                @Index(
+                        name = "idx_notification_receiver_created_id",
+                        columnList = "receiver_id, created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_notification_receiver_read_created_id",
+                        columnList = "receiver_id, is_read, created_at DESC, id DESC"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

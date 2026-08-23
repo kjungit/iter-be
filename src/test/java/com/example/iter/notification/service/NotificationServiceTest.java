@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -159,5 +161,31 @@ class NotificationServiceTest {
 
         verify(notificationRepository).findNextUnreadByReceiverId(eq(1L), isNull(), any(Pageable.class));
         verify(notificationRepository, never()).findNextByReceiverId(any(), any(), any());
+    }
+
+    @Test
+    void 알림_목록은_생성시각과_ID_내림차순_조회에_위임한다() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        Notification target = notification(2L, 1L, false);
+        when(notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(1L, pageable))
+                .thenReturn(new PageImpl<>(List.of(target), pageable, 1));
+
+        var response = notificationService().getNotifications(1L, false, 0, 20);
+
+        assertThat(response.content()).singleElement()
+                .satisfies(item -> assertThat(item.id()).isEqualTo(2L));
+        verify(notificationRepository).findByReceiverIdOrderByCreatedAtDescIdDesc(1L, pageable);
+    }
+
+    @Test
+    void 읽지_않은_알림_목록도_생성시각과_ID_내림차순_조회에_위임한다() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(1L, pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        var response = notificationService().getNotifications(1L, true, 0, 20);
+
+        assertThat(response.content()).isEmpty();
+        verify(notificationRepository).findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(1L, pageable);
     }
 }

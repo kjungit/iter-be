@@ -1,11 +1,12 @@
 package com.example.iter.payment.controller.admin;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.payment.controller.admin.spec.AdminPaymentApiSpec;
 import com.example.iter.payment.dto.request.AdminPaymentSearchRequest;
 import com.example.iter.payment.dto.response.AdminPaymentDetailResponse;
 import com.example.iter.payment.dto.response.AdminPaymentSummaryResponse;
 import com.example.iter.payment.service.AdminPaymentQueryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +29,7 @@ public class AdminPaymentApiController implements AdminPaymentApiSpec {
     // 관리자가 검색 조건과 페이지 정보로 결제 목록을 조회합니다.
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<AdminPaymentSummaryResponse>> getPayments(@ModelAttribute AdminPaymentSearchRequest request) {
+    public ResponseEntity<CursorPageResponse<AdminPaymentSummaryResponse>> getPayments(@ModelAttribute AdminPaymentSearchRequest request) {
         return ResponseEntity.ok(adminPaymentQueryService.getPayments(request));
     }
 

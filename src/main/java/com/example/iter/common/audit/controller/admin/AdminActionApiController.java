@@ -4,7 +4,7 @@ import com.example.iter.common.audit.controller.admin.spec.AdminActionApiSpec;
 import com.example.iter.common.audit.dto.request.AdminActionSearchRequest;
 import com.example.iter.common.audit.dto.response.AdminActionResponse;
 import com.example.iter.common.audit.service.AdminActionQueryService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,7 +26,7 @@ public class AdminActionApiController implements AdminActionApiSpec {
     // 관리자가 대상 유형, 대상 ID, 조치 유형 조건으로 처리 이력을 조회합니다.
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<AdminActionResponse>> getAdminActions(@ModelAttribute AdminActionSearchRequest request) {
+    public ResponseEntity<CursorPageResponse<AdminActionResponse>> getAdminActions(@ModelAttribute AdminActionSearchRequest request) {
         return ResponseEntity.ok(adminActionQueryService.getAdminActions(request));
     }
 }

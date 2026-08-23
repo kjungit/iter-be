@@ -1,9 +1,9 @@
 package com.example.iter.dispute.controller.admin.spec;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
+import com.example.iter.dispute.dto.request.AdminReportSearchRequest;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.dispute.dto.request.AdminReportUpdateRequest;
-import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,16 +24,16 @@ public interface AdminReportApiSpec {
 
     @Operation(
             summary = "신고 목록 조회",
-            description = "관리자가 전체 신고를 대상 유형과 처리 상태 조건으로 최신 접수순 조회합니다."
+            description = "관리자가 전체 신고를 대상 유형과 처리 상태 조건으로 최신 접수순 커서 조회합니다. 첫 요청에서는 cursor를 생략하고 다음 요청에는 응답의 nextCursor를 전달합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "신고 목록 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "검색 또는 페이징 조건 오류", content = @Content),
+            @ApiResponse(responseCode = "400", description = "검색 또는 커서 조건 오류", content = @Content),
             @ApiResponse(responseCode = "401", description = "인증 필요", content = @Content),
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음", content = @Content)
     })
-    ResponseEntity<PageResponse<ReportSummaryResponse>> getReports(
-            @Valid @ParameterObject ReportSearchRequest request
+    ResponseEntity<CursorPageResponse<ReportSummaryResponse>> getReports(
+            @Valid @ParameterObject AdminReportSearchRequest request
     );
 
     @Operation(

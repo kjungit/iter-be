@@ -7,6 +7,7 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.config.JpaConfig;
 import com.example.iter.payment.domain.entity.Payment;
 import com.example.iter.payment.domain.entity.PaymentStatus;
+import com.example.iter.payment.service.model.AdminPaymentSummaryRow;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
@@ -68,15 +69,17 @@ class AdminPaymentQueryRepositoryTest {
                 PaymentStatus.PAID
         );
 
-        var result = adminPaymentQueryRepository.searchForAdmin(
+        var result = adminPaymentQueryRepository.searchForAdminByCursor(
                 keyword,
                 null,
                 null,
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .singleElement()
                 .satisfies(row -> {
                     assertThat(row.paymentId()).isEqualTo(expected.payment().getId());
@@ -105,25 +108,29 @@ class AdminPaymentQueryRepositoryTest {
                 PaymentStatus.PAID
         );
 
-        var percentResult = adminPaymentQueryRepository.searchForAdmin(
+        var percentResult = adminPaymentQueryRepository.searchForAdminByCursor(
                 "%",
+                null,
+                null,
                 null,
                 null,
                 null,
                 PageRequest.of(0, 20)
         );
-        var underscoreResult = adminPaymentQueryRepository.searchForAdmin(
+        var underscoreResult = adminPaymentQueryRepository.searchForAdminByCursor(
                 "_",
+                null,
+                null,
                 null,
                 null,
                 null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(percentResult.getContent())
+        assertThat(percentResult)
                 .extracting(row -> row.paymentId())
                 .containsExactly(expected.payment().getId());
-        assertThat(underscoreResult.getContent())
+        assertThat(underscoreResult)
                 .extracting(row -> row.paymentId())
                 .containsExactly(expected.payment().getId());
     }
@@ -147,15 +154,16 @@ class AdminPaymentQueryRepositoryTest {
                 PaymentStatus.FAILED
         );
 
-        var result = adminPaymentQueryRepository.searchForAdmin(
-                null,
+        var result = adminPaymentQueryRepository.searchWithoutKeywordForAdminByCursor(
                 PaymentStatus.PAID,
                 expected.payment().getCreatedAt().minusSeconds(1),
                 expected.payment().getCreatedAt().plusSeconds(1),
+                null,
+                null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(row -> row.paymentId())
                 .containsExactly(expected.payment().getId());
     }
@@ -179,29 +187,30 @@ class AdminPaymentQueryRepositoryTest {
                 PaymentStatus.PAID
         );
 
-        var firstPage = adminPaymentQueryRepository.searchForAdmin(
+        var firstPage = adminPaymentQueryRepository.searchWithoutKeywordForAdminByCursor(
                 null,
                 null,
                 null,
                 null,
-                PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                PageRequest.of(0, 1)
         );
-        var secondPage = adminPaymentQueryRepository.searchForAdmin(
+        AdminPaymentSummaryRow cursor = firstPage.getFirst();
+        var secondPage = adminPaymentQueryRepository.searchWithoutKeywordForAdminByCursor(
                 null,
                 null,
                 null,
-                null,
-                PageRequest.of(1, 1, Sort.by(Sort.Direction.ASC, "id"))
+                cursor.createdAt(),
+                cursor.paymentId(),
+                PageRequest.of(0, 1)
         );
 
-        assertThat(firstPage.getTotalElements()).isEqualTo(2);
-        assertThat(firstPage.getTotalPages()).isEqualTo(2);
-        assertThat(firstPage.getContent())
-                .extracting(row -> row.paymentId())
-                .containsExactly(first.payment().getId());
-        assertThat(secondPage.getContent())
+        assertThat(firstPage)
                 .extracting(row -> row.paymentId())
                 .containsExactly(second.payment().getId());
+        assertThat(secondPage)
+                .extracting(row -> row.paymentId())
+                .containsExactly(first.payment().getId());
     }
 
     @Test

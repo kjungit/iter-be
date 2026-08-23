@@ -27,6 +27,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+    Page<Notification> findByReceiverIdOrderByCreatedAtDescIdDesc(Long receiverId, Pageable pageable);
 
     @Query("""
             select n
@@ -41,6 +42,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+    Page<Notification> findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(Long receiverId, Pageable pageable);
 
     long countByReceiverIdAndReadFalse(Long receiverId);
 

@@ -262,34 +262,46 @@ class ReportRepositoryTest {
                 ReportStatus.RESOLVED
         ));
 
-        var result = reportRepository.searchForAdmin(
+        var result = reportRepository.searchForAdminByCursor(
                 ReportTargetType.EQUIPMENT,
                 ReportStatus.UNDER_REVIEW,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(2);
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(Report::getId)
-                .containsExactly(older.getId(), newer.getId());
+                .containsExactly(newer.getId(), older.getId());
     }
 
     @Test
-    void 관리자_신고_조회는_전체_건수와_페이지를_정확히_반환한다() {
-        reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.USER, 10L, ReportStatus.RECEIVED));
-        reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.EQUIPMENT, 20L, ReportStatus.RESOLVED));
-        reportRepository.saveAndFlush(report(OTHER_REPORTER_ID, ReportTargetType.RENTAL, 30L, ReportStatus.REJECTED));
+    void 관리자_신고_조회는_커서_다음_데이터를_반환한다() {
+        Report oldest = reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.USER, 10L, ReportStatus.RECEIVED));
+        Report middle = reportRepository.saveAndFlush(report(REPORTER_ID, ReportTargetType.EQUIPMENT, 20L, ReportStatus.RESOLVED));
+        Report latest = reportRepository.saveAndFlush(report(OTHER_REPORTER_ID, ReportTargetType.RENTAL, 30L, ReportStatus.REJECTED));
+        entityManager.clear();
 
-        var result = reportRepository.searchForAdmin(
+        var first = reportRepository.searchForAdminByCursor(
                 null,
                 null,
-                PageRequest.of(1, 2, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 2)
+        );
+        Report cursor = first.getLast();
+        var second = reportRepository.searchForAdminByCursor(
+                null,
+                null,
+                cursor.getCreatedAt(),
+                cursor.getId(),
+                PageRequest.of(0, 2)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(3);
-        assertThat(result.getTotalPages()).isEqualTo(2);
-        assertThat(result.getNumber()).isEqualTo(1);
-        assertThat(result.getContent()).hasSize(1);
+        assertThat(first).extracting(Report::getId)
+                .containsExactly(latest.getId(), middle.getId());
+        assertThat(second).extracting(Report::getId)
+                .containsExactly(oldest.getId());
     }
 
     @Test

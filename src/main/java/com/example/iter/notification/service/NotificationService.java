@@ -77,6 +77,12 @@ public class NotificationService {
 
         List<NotificationResponse> responses = notifications.stream().map(NotificationResponse::from).toList();
         return CursorPageResponse.of(responses, size, NotificationResponse::id);
+    public PageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Notification> result = unreadOnly
+                ? notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(userId, pageable)
+                : notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(userId, pageable);
+        return PageResponse.from(result.map(NotificationResponse::from));
     }
 
     @Transactional(readOnly = true)

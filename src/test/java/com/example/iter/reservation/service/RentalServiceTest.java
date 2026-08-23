@@ -3,6 +3,7 @@ package com.example.iter.reservation.service;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.auth.dto.response.UserSummaryResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.device.domain.entity.Equipment;
@@ -11,6 +12,8 @@ import com.example.iter.device.domain.entity.EquipmentStatus;
 import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.payment.domain.repository.PaymentRepository;
+import com.example.iter.payment.domain.entity.PaymentStatus;
+import com.example.iter.payment.service.model.RentalPaymentStatusRow;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
@@ -24,6 +27,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -77,10 +85,14 @@ class RentalServiceTest {
     }
 
     private Rental rental(Long id, RentalStatus status) {
+        return rental(id, 2L, status);
+    }
+
+    private Rental rental(Long id, Long renterId, RentalStatus status) {
         return Rental.builder()
                 .id(id)
                 .equipmentId(1L)
-                .renterId(2L)
+                .renterId(renterId)
                 .startDate(LocalDate.of(2026, 8, 20))
                 .endDate(LocalDate.of(2026, 8, 25))
                 .productNameSnapshot("소니 A7C2")
@@ -90,6 +102,66 @@ class RentalServiceTest {
                 .totalPrice(BigDecimal.valueOf(180000))
                 .status(status)
                 .build();
+    }
+
+    @Test
+    void 받은_대여_요청은_회원과_결제_상태를_각각_한번에_조회한다() {
+        Rental first = rental(10L, 2L, RentalStatus.REQUESTED);
+        Rental second = rental(11L, 3L, RentalStatus.REQUESTED);
+        PageRequest expectedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
+        when(rentalRepository.findReceivedRentals(99L, null, expectedPageable))
+                .thenReturn(new PageImpl<>(List.of(first, second), expectedPageable, 2));
+        when(userRepository.findSummariesByIdIn(List.of(2L, 3L)))
+                .thenReturn(List.of(
+                        new UserSummaryResponse(2L, "대여자2"),
+                        new UserSummaryResponse(3L, "대여자3")
+                ));
+        when(paymentRepository.findStatusesByRentalIdIn(List.of(10L, 11L)))
+                .thenReturn(List.of(new RentalPaymentStatusRow(10L, PaymentStatus.PAID)));
+
+        var response = rentalService.getReceivedRentals(99L, null, 0, 20);
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.content().get(0).renter().nickName()).isEqualTo("대여자2");
+        assertThat(response.content().get(0).paymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(response.content().get(1).renter().nickName()).isEqualTo("대여자3");
+        assertThat(response.content().get(1).paymentStatus()).isNull();
+        assertThat(response.totalElements()).isEqualTo(2);
+        verify(userRepository).findSummariesByIdIn(List.of(2L, 3L));
+        verify(paymentRepository).findStatusesByRentalIdIn(List.of(10L, 11L));
+        verify(userRepository, never()).findSummaryById(anyLong());
+        verify(paymentRepository, never()).findByRentalId(11L);
+    }
+
+    @Test
+    void 받은_대여_요청의_대여자_정보가_없으면_예외를_던진다() {
+        Rental target = rental(10L, 2L, RentalStatus.REQUESTED);
+        when(rentalRepository.findReceivedRentals(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(target)));
+        when(userRepository.findSummariesByIdIn(List.of(2L))).thenReturn(List.of());
+        when(paymentRepository.findStatusesByRentalIdIn(List.of(10L))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> rentalService.getReceivedRentals(99L, null, 0, 20))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void 받은_대여_요청이_비어있으면_일괄_조회하지_않는다() {
+        when(rentalRepository.findReceivedRentals(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty(PageRequest.of(0, 20)));
+
+        var response = rentalService.getReceivedRentals(99L, null, 0, 20);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+        verify(userRepository, never()).findSummariesByIdIn(any());
+        verify(paymentRepository, never()).findStatusesByRentalIdIn(any());
     }
 
     @Test

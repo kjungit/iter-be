@@ -52,16 +52,18 @@ class EquipmentRepositoryAdminTest {
                 EquipmentStatus.ACTIVE
         ));
 
-        var result = equipmentRepository.searchForAdmin(
+        var result = equipmentRepository.searchForAdminByCursor(
                 "macbook",
                 null,
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(Equipment::getId)
-                .containsExactly(first.getId(), second.getId());
+                .containsExactly(second.getId(), first.getId());
     }
 
     @Test
@@ -79,14 +81,16 @@ class EquipmentRepositoryAdminTest {
                 EquipmentStatus.ACTIVE
         ));
 
-        var result = equipmentRepository.searchForAdmin(
+        var result = equipmentRepository.searchForAdminByCursor(
                 "%",
                 null,
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(Equipment::getId)
                 .containsExactly(expected.getId());
     }
@@ -106,14 +110,16 @@ class EquipmentRepositoryAdminTest {
                 EquipmentStatus.ACTIVE
         ));
 
-        var result = equipmentRepository.searchForAdmin(
+        var result = equipmentRepository.searchForAdminByCursor(
                 "_",
                 null,
                 null,
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(Equipment::getId)
                 .containsExactly(expected.getId());
     }
@@ -139,14 +145,16 @@ class EquipmentRepositoryAdminTest {
                 EquipmentStatus.SUSPENDED
         ));
 
-        var result = equipmentRepository.searchForAdmin(
+        var result = equipmentRepository.searchForAdminByCursor(
                 null,
                 "camera",
                 EquipmentStatus.SUSPENDED,
+                null,
+                null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(Equipment::getId)
                 .containsExactly(expected.getId());
     }
@@ -165,28 +173,32 @@ class EquipmentRepositoryAdminTest {
                 "두 번째 장비",
                 EquipmentStatus.DELETED
         ));
+        entityManager.clear();
 
-        var firstPage = equipmentRepository.searchForAdmin(
+        var firstPage = equipmentRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, "id"))
+                null,
+                null,
+                PageRequest.of(0, 1)
         );
-        var secondPage = equipmentRepository.searchForAdmin(
+        Equipment cursor = firstPage.getFirst();
+        var secondPage = equipmentRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(1, 1, Sort.by(Sort.Direction.ASC, "id"))
+                cursor.getCreatedAt(),
+                cursor.getId(),
+                PageRequest.of(0, 1)
         );
 
-        assertThat(firstPage.getTotalElements()).isEqualTo(2);
-        assertThat(firstPage.getTotalPages()).isEqualTo(2);
-        assertThat(firstPage.getContent())
-                .extracting(Equipment::getId)
-                .containsExactly(first.getId());
-        assertThat(secondPage.getContent())
+        assertThat(firstPage)
                 .extracting(Equipment::getId)
                 .containsExactly(second.getId());
+        assertThat(secondPage)
+                .extracting(Equipment::getId)
+                .containsExactly(first.getId());
     }
 
     @Test

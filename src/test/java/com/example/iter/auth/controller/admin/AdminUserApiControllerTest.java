@@ -10,7 +10,7 @@ import com.example.iter.auth.dto.response.AdminUserStatusResponse;
 import com.example.iter.auth.dto.response.AdminUserSummaryResponse;
 import com.example.iter.auth.service.AdminUserService;
 import com.example.iter.common.config.RestApiSecurityTestConfig;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.GlobalExceptionHandler;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.common.security.CustomUserDetailsService;
@@ -81,7 +81,7 @@ class AdminUserApiControllerTest {
     }
 
     @Test
-    void 관리자가_회원_목록을_검색하고_페이징해_조회한다() throws Exception {
+    void 관리자가_회원_목록을_검색하고_커서로_조회한다() throws Exception {
         AdminUserSummaryResponse summary = new AdminUserSummaryResponse(
                 USER_ID,
                 "user@iter.test",
@@ -92,24 +92,28 @@ class AdminUserApiControllerTest {
                 LocalDateTime.of(2026, 8, 1, 10, 0)
         );
         when(adminUserService.getUsers(any(AdminUserSearchRequest.class)))
-                .thenReturn(new PageResponse<>(List.of(summary), 0, 20, 1, 1));
+                .thenReturn(new CursorPageResponse<>(List.of(summary), "next-cursor", true, 20));
 
         mockMvc.perform(get("/api/v1/admin/users")
                         .with(user(adminPrincipal))
                         .queryParam("keyword", "iter")
                         .queryParam("status", "ACTIVE")
-                        .queryParam("page", "0")
+                        .queryParam("cursor", "current-cursor")
                         .queryParam("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].userId").value(USER_ID))
                 .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.nextCursor").value("next-cursor"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.page").doesNotExist())
+                .andExpect(jsonPath("$.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist());
 
         ArgumentCaptor<AdminUserSearchRequest> captor = ArgumentCaptor.forClass(AdminUserSearchRequest.class);
         verify(adminUserService).getUsers(captor.capture());
         assertThat(captor.getValue().keyword()).isEqualTo("iter");
         assertThat(captor.getValue().status()).isEqualTo(UserStatus.ACTIVE);
-        assertThat(captor.getValue().page()).isZero();
+        assertThat(captor.getValue().cursor()).isEqualTo("current-cursor");
         assertThat(captor.getValue().size()).isEqualTo(20);
     }
 
