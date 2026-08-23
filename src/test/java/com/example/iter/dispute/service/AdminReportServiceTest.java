@@ -5,15 +5,15 @@ import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.common.audit.domain.entity.AdminActionTargetType;
 import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.service.AdminActionService;
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
 import com.example.iter.dispute.domain.repository.ReportRepository;
+import com.example.iter.dispute.dto.request.AdminReportSearchRequest;
 import com.example.iter.dispute.dto.request.AdminReportUpdateRequest;
-import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import com.example.iter.dispute.util.AdminReportMapper;
@@ -26,7 +26,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -70,46 +69,49 @@ class AdminReportServiceTest {
         User reporter = reporter();
         ReportSummaryResponse firstResponse = summary(10L);
         ReportSummaryResponse secondResponse = summary(11L);
-        ReportSearchRequest request = new ReportSearchRequest(
+        AdminReportSearchRequest request = new AdminReportSearchRequest(
                 ReportTargetType.EQUIPMENT,
                 ReportStatus.RECEIVED,
-                1,
+                null,
                 2
         );
 
-        when(reportRepository.searchForAdmin(
+        when(reportRepository.searchForAdminByCursor(
                 eq(ReportTargetType.EQUIPMENT),
                 eq(ReportStatus.RECEIVED),
+                eq(null),
+                eq(null),
                 any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(first, second)));
+        )).thenReturn(List.of(first, second));
         when(userRepository.findAllById(List.of(REPORTER_ID))).thenReturn(List.of(reporter));
         when(adminReportMapper.toSummary(first, reporter)).thenReturn(firstResponse);
         when(adminReportMapper.toSummary(second, reporter)).thenReturn(secondResponse);
 
-        PageResponse<ReportSummaryResponse> result = adminReportService.getReports(request);
+        CursorPageResponse<ReportSummaryResponse> result = adminReportService.getReports(request);
 
         assertThat(result.content()).containsExactly(firstResponse, secondResponse);
         verify(userRepository).findAllById(List.of(REPORTER_ID));
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(reportRepository).searchForAdmin(
+        verify(reportRepository).searchForAdminByCursor(
                 eq(ReportTargetType.EQUIPMENT),
                 eq(ReportStatus.RECEIVED),
+                eq(null),
+                eq(null),
                 captor.capture()
         );
-        assertThat(captor.getValue().getPageNumber()).isEqualTo(1);
-        assertThat(captor.getValue().getPageSize()).isEqualTo(2);
-        assertThat(captor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
-        assertThat(captor.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+        assertThat(captor.getValue().getPageNumber()).isZero();
+        assertThat(captor.getValue().getPageSize()).isEqualTo(3);
     }
 
     @Test
     void 신고_목록이_비어있으면_신고자를_조회하지_않는다() {
-        ReportSearchRequest request = new ReportSearchRequest(null, null, null, null);
-        when(reportRepository.searchForAdmin(eq(null), eq(null), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        AdminReportSearchRequest request = new AdminReportSearchRequest(null, null, null, null);
+        when(reportRepository.searchForAdminByCursor(
+                eq(null), eq(null), eq(null), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
 
-        PageResponse<ReportSummaryResponse> result = adminReportService.getReports(request);
+        CursorPageResponse<ReportSummaryResponse> result = adminReportService.getReports(request);
 
         assertThat(result.content()).isEmpty();
         verify(userRepository, never()).findAllById(any());
@@ -119,9 +121,10 @@ class AdminReportServiceTest {
     @Test
     void 신고_목록의_신고자를_찾을_수_없으면_예외가_발생한다() {
         Report report = report(REPORT_ID, ReportStatus.RECEIVED);
-        ReportSearchRequest request = new ReportSearchRequest(null, null, 0, 20);
-        when(reportRepository.searchForAdmin(eq(null), eq(null), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(report)));
+        AdminReportSearchRequest request = new AdminReportSearchRequest(null, null, null, 20);
+        when(reportRepository.searchForAdminByCursor(
+                eq(null), eq(null), eq(null), eq(null), any(Pageable.class)
+        )).thenReturn(List.of(report));
         when(userRepository.findAllById(List.of(REPORTER_ID))).thenReturn(List.of());
 
         assertThatThrownBy(() -> adminReportService.getReports(request))

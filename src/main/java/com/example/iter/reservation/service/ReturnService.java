@@ -71,7 +71,6 @@ public class ReturnService {
         return PageResponse.from(responses);
     }
 
-
     // 거래 당사자가 수령·반납 증빙을 비교 조회합니다.
     @Transactional(readOnly = true)
     public ReturnComparisonResponse getReturnComparison(Long userId, Long rentalId) {

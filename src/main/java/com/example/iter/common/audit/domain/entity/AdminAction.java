@@ -8,7 +8,19 @@ import lombok.*;
 // adminId/targetId는 다른 도메인(User/Equipment/Dispute)의 PK를 값으로만 들고,
 // JPA 연관관계(FK 매핑)는 의도적으로 걸지 않는다 (도메인 간 결합도를 낮춰 3차 MSA 전환을 염두에 둔 설계 — 개발 컨벤션 참고).
 @Entity
-@Table(name = "admin_action")
+@Table(
+        name = "admin_action",
+        indexes = {
+                @Index(
+                        name = "idx_admin_action_created_id",
+                        columnList = "created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_admin_action_target_created_id",
+                        columnList = "target_type, target_id, action, created_at DESC, id DESC"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

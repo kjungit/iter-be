@@ -87,6 +87,19 @@ class MyEquipmentApiTest {
     }
 
     @Test
+    void 내_장비_평점순_요청은_리뷰_비활성화로_최신순을_반환한다() throws Exception {
+        User owner = saveUser("rating-sort-owner@example.com");
+        saveEquipment(owner, "이전 장비", 10_000, EquipmentStatus.ACTIVE);
+        Equipment latest = saveEquipment(owner, "최신 장비", 20_000, EquipmentStatus.INACTIVE);
+
+        mockMvc.perform(get("/api/v1/users/me/devices")
+                        .queryParam("sort", "RATING_DESC")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(latest.getId()));
+    }
+
+    @Test
     void 잘못된_상태와_페이지_조건은_400을_반환한다() throws Exception {
         User owner = saveUser("invalid-my-search@example.com");
 

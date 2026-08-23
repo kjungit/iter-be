@@ -12,6 +12,8 @@ import com.example.iter.common.audit.domain.entity.AdminActionType;
 import com.example.iter.common.audit.service.AdminActionService;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
 import com.example.iter.dispute.domain.repository.ReportRepository;
@@ -24,11 +26,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,47 +72,56 @@ class AdminUserServiceTest {
     private AdminUserService adminUserService;
 
     @Test
-    void 관리자_회원_목록은_검색어를_정규화하고_최신순으로_조회한다() {
+    void 관리자_회원_목록은_검색어와_커서를_정규화해_조회한다() {
         User user = user(USER_ID, Role.USER, UserStatus.ACTIVE);
+        CursorKey cursorKey = new CursorKey(LocalDateTime.of(2026, 8, 1, 10, 0), 100L);
         AdminUserSearchRequest request = new AdminUserSearchRequest(
                 "  iter  ",
                 UserStatus.ACTIVE,
-                1,
+                CursorCodec.encode(cursorKey),
                 10
         );
-        when(userRepository.searchForAdmin(eq("iter"), eq(UserStatus.ACTIVE), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(user), PageRequest.of(1, 10), 11));
+        when(userRepository.searchForAdminByCursor(
+                eq("iter"),
+                eq(UserStatus.ACTIVE),
+                eq(cursorKey.createdAt()),
+                eq(cursorKey.id()),
+                any(Pageable.class)
+        )).thenReturn(List.of(user));
 
         var response = adminUserService.getUsers(request);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().userId()).isEqualTo(USER_ID);
-        assertThat(response.page()).isEqualTo(1);
         assertThat(response.size()).isEqualTo(10);
-        assertThat(response.totalElements()).isEqualTo(11);
+        assertThat(response.hasNext()).isFalse();
+        assertThat(response.nextCursor()).isNull();
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepository).searchForAdmin(
+        verify(userRepository).searchForAdminByCursor(
                 eq("iter"),
                 eq(UserStatus.ACTIVE),
+                eq(cursorKey.createdAt()),
+                eq(cursorKey.id()),
                 pageableCaptor.capture()
         );
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
-        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(11);
     }
 
     @Test
     void 빈_검색어는_null로_변환해_전체_회원을_조회한다() {
-        when(userRepository.searchForAdmin(isNull(), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        when(userRepository.searchForAdminByCursor(
+                isNull(), isNull(), isNull(), isNull(), any(Pageable.class)
+        )).thenReturn(List.of());
 
         var response = adminUserService.getUsers(
                 new AdminUserSearchRequest("   ", null, null, null)
         );
 
         assertThat(response.content()).isEmpty();
-        assertThat(response.page()).isZero();
         assertThat(response.size()).isEqualTo(20);
+        assertThat(response.hasNext()).isFalse();
     }
 
     @Test

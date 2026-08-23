@@ -12,9 +12,9 @@ import java.time.LocalDateTime;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    Page<Notification> findByReceiverIdOrderByCreatedAtDesc(Long receiverId, Pageable pageable);
+    Page<Notification> findByReceiverIdOrderByCreatedAtDescIdDesc(Long receiverId, Pageable pageable);
 
-    Page<Notification> findByReceiverIdAndReadFalseOrderByCreatedAtDesc(Long receiverId, Pageable pageable);
+    Page<Notification> findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(Long receiverId, Pageable pageable);
 
     long countByReceiverIdAndReadFalse(Long receiverId);
 

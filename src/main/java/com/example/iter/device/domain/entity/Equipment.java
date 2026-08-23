@@ -10,7 +10,23 @@ import java.time.LocalDate;
 // ERD EQUIPMENT 엔티티
 // ownerId는 auth 도메인 User의 PK를 값으로만 참조한다 (도메인 간 JPA 연관관계를 걸지 않음 — AdminAction과 동일한 이유).
 @Entity
-@Table(name = "equipment")
+@Table(
+        name = "equipment",
+        indexes = {
+                @Index(
+                        name = "idx_equipment_created_id",
+                        columnList = "created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_equipment_status_created_id",
+                        columnList = "status, created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_equipment_owner_created_id",
+                        columnList = "owner_id, created_at DESC, id DESC"
+                )
+        }
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

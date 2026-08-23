@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -53,21 +52,18 @@ class AdminActionRepositoryAdminTest {
                 "장비 차단 해제"
         );
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 AdminActionTargetType.EQUIPMENT,
                 null,
                 null,
-                PageRequest.of(
-                        0,
-                        20,
-                        Sort.by(Sort.Direction.ASC, "id")
-                )
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(2);
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getId)
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                         firstEquipmentAction.getId(),
                         secondEquipmentAction.getId()
                 );
@@ -97,21 +93,18 @@ class AdminActionRepositoryAdminTest {
                 "다른 장비 차단 해제"
         );
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 null,
                 10L,
                 null,
-                PageRequest.of(
-                        0,
-                        20,
-                        Sort.by(Sort.Direction.ASC, "id")
-                )
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(2);
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getId)
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                         equipmentAction.getId(),
                         userAction.getId()
                 );
@@ -141,15 +134,16 @@ class AdminActionRepositoryAdminTest {
                 "회원 이용 정지 해제"
         );
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 null,
                 null,
                 AdminActionType.RESTORE_EQUIPMENT,
+                null,
+                null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getId)
                 .containsExactly(expected.getId());
     }
@@ -185,19 +179,20 @@ class AdminActionRepositoryAdminTest {
                 "회원 이용 정지"
         );
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 AdminActionTargetType.EQUIPMENT,
                 10L,
                 AdminActionType.SUSPEND_EQUIPMENT,
+                null,
+                null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getId)
                 .containsExactly(expected.getId());
 
-        AdminAction found = result.getContent().getFirst();
+        AdminAction found = result.getFirst();
         assertThat(found.getAdminId()).isEqualTo(1L);
         assertThat(found.getTargetType())
                 .isEqualTo(AdminActionTargetType.EQUIPMENT);
@@ -208,7 +203,7 @@ class AdminActionRepositoryAdminTest {
     }
 
     @Test
-    void 검색_조건과_일치하는_처리_이력이_없으면_빈_페이지를_반환한다() {
+    void 검색_조건과_일치하는_처리_이력이_없으면_빈_목록을_반환한다() {
         saveAction(
                 1L,
                 AdminActionTargetType.EQUIPMENT,
@@ -217,22 +212,20 @@ class AdminActionRepositoryAdminTest {
                 "장비 차단"
         );
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 AdminActionTargetType.USER,
                 999L,
                 AdminActionType.RESTORE_USER,
+                null,
+                null,
                 PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isZero();
-        assertThat(result.getTotalPages()).isZero();
-        assertThat(result.getNumber()).isZero();
-        assertThat(result.getSize()).isEqualTo(20);
+        assertThat(result).isEmpty();
     }
 
     @Test
-    void 검색_조건이_없으면_전체_처리_이력을_페이징한다() {
+    void 검색_조건이_없으면_전체_처리_이력을_커서로_조회한다() {
         AdminAction first = saveAction(
                 1L,
                 AdminActionTargetType.USER,
@@ -254,41 +247,38 @@ class AdminActionRepositoryAdminTest {
                 AdminActionType.RESOLVE_REPORT,
                 "세 번째 처리"
         );
+        entityManager.clear();
 
-        Sort idAscending = Sort.by(Sort.Direction.ASC, "id");
-
-        var firstPage = adminActionRepository.searchForAdmin(
+        var firstPage = adminActionRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(0, 2, idAscending)
+                null,
+                null,
+                PageRequest.of(0, 2)
         );
-        var secondPage = adminActionRepository.searchForAdmin(
+        AdminAction cursor = firstPage.getLast();
+        var secondPage = adminActionRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(1, 2, idAscending)
+                cursor.getCreatedAt(),
+                cursor.getId(),
+                PageRequest.of(0, 2)
         );
 
-        assertThat(firstPage.getTotalElements()).isEqualTo(3);
-        assertThat(firstPage.getTotalPages()).isEqualTo(2);
-        assertThat(firstPage.getNumber()).isZero();
-        assertThat(firstPage.getSize()).isEqualTo(2);
-        assertThat(firstPage.getContent())
+        assertThat(firstPage)
                 .extracting(AdminAction::getId)
-                .containsExactly(first.getId(), second.getId());
+                .containsExactly(third.getId(), second.getId());
 
-        assertThat(secondPage.getTotalElements()).isEqualTo(3);
-        assertThat(secondPage.getTotalPages()).isEqualTo(2);
-        assertThat(secondPage.getNumber()).isEqualTo(1);
-        assertThat(secondPage.getContent())
+        assertThat(secondPage)
                 .extracting(AdminAction::getId)
-                .containsExactly(third.getId());
+                .containsExactly(first.getId());
     }
 
     @Test
-    void 마지막_페이지_다음은_전체_개수를_유지한_빈_페이지를_반환한다() {
-        saveAction(
+    void 마지막_커서_다음은_빈_목록을_반환한다() {
+        AdminAction oldest = saveAction(
                 1L,
                 AdminActionTargetType.USER,
                 10L,
@@ -309,23 +299,20 @@ class AdminActionRepositoryAdminTest {
                 AdminActionType.RESOLVE_REPORT,
                 "세 번째 처리"
         );
+        Long oldestId = oldest.getId();
+        entityManager.clear();
+        AdminAction cursor = adminActionRepository.findById(oldestId).orElseThrow();
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(
-                        2,
-                        2,
-                        Sort.by(Sort.Direction.ASC, "id")
-                )
+                cursor.getCreatedAt(),
+                cursor.getId(),
+                PageRequest.of(0, 2)
         );
 
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isEqualTo(3);
-        assertThat(result.getTotalPages()).isEqualTo(2);
-        assertThat(result.getNumber()).isEqualTo(2);
-        assertThat(result.getSize()).isEqualTo(2);
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -362,21 +349,16 @@ class AdminActionRepositoryAdminTest {
         updateCreatedAt(sameTimeSecondAction.getId(), latestCreatedAt);
         entityManager.clear();
 
-        var result = adminActionRepository.searchForAdmin(
+        var result = adminActionRepository.searchForAdminByCursor(
                 null,
                 null,
                 null,
-                PageRequest.of(
-                        0,
-                        20,
-                        Sort.by(
-                                Sort.Order.desc("createdAt"),
-                                Sort.Order.desc("id")
-                        )
-                )
+                null,
+                null,
+                PageRequest.of(0, 20)
         );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getId)
                 .containsExactly(
                         sameTimeSecondAction.getId(),
@@ -384,7 +366,7 @@ class AdminActionRepositoryAdminTest {
                         olderAction.getId()
                 );
 
-        assertThat(result.getContent())
+        assertThat(result)
                 .extracting(AdminAction::getCreatedAt)
                 .containsExactly(
                         latestCreatedAt,
