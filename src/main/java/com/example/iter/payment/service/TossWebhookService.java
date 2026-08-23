@@ -28,7 +28,7 @@ public class TossWebhookService {
     @Transactional
     public void handle(TossWebhookPayload payload) {
         if (!payload.isPaymentStatusChanged()) {
-            log.info("토스 웹훅 - 처리 대상 아닌 이벤트: eventType={}", payload.eventType());
+            log.info("토스 웹훅 처리 제외: 지원하지 않는 이벤트 유형");
             return;
         }
 
@@ -36,18 +36,19 @@ public class TossWebhookService {
 
         Payment payment = paymentRepository.findByOrderId(verified.orderId()).orElse(null);
         if (payment == null) {
-            log.warn("토스 웹훅 - 매칭되는 결제 내역 없음: orderId={}", verified.orderId());
+            log.warn("토스 웹훅 처리 실패: 매칭되는 결제 내역 없음");
             return;
         }
 
         if (!"DONE".equals(verified.status())) {
-            log.info("토스 웹훅 - 아직 처리 로직 없는 상태 변경 (무시): orderId={}, status={}",
-                    verified.orderId(), verified.status());
+            log.info("토스 웹훅 처리 제외: paymentId={}, rentalId={}, providerStatus={}",
+                    payment.getId(), payment.getRentalId(), verified.status());
             return;
         }
 
         if (payment.getStatus() == PaymentStatus.PAID) {
-            log.info("토스 웹훅 - 이미 confirm()으로 반영된 결제, 재확인만 함: orderId={}", verified.orderId());
+            log.info("토스 웹훅 중복 처리 방지: paymentId={}, rentalId={}, status={}",
+                    payment.getId(), payment.getRentalId(), payment.getStatus());
             return;
         }
 
@@ -55,6 +56,7 @@ public class TossWebhookService {
         payment.markPaid(verified.paymentKey(), verified.approvedAtAsLocalDateTime());
         rentalRepository.findById(payment.getRentalId())
                 .ifPresent(rental -> rental.changeStatus(RentalStatus.REQUESTED));
-        log.info("토스 웹훅 - Payment/Rental 상태 반영 완료: orderId={}", verified.orderId());
+        log.info("토스 웹훅 결제 상태 반영 처리: paymentId={}, rentalId={}, status={}",
+                payment.getId(), payment.getRentalId(), payment.getStatus());
     }
 }

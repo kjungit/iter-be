@@ -29,7 +29,7 @@ public class JavaMailService implements MailService {
         try {
             javaMailSender.send(mailMessage);
         } catch (MailException e) {
-            log.warn("메일 발송 실패: to={}, subject={}", message.to(), message.subject(), e);
+            log.warn("메일 발송 실패", e);
         }
     }
 }

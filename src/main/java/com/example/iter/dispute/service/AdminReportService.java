@@ -19,6 +19,7 @@ import com.example.iter.dispute.dto.response.AdminReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import com.example.iter.dispute.util.AdminReportMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminReportService {
@@ -99,6 +101,8 @@ public class AdminReportService {
         );
 
         reportRepository.flush();
+        log.info("관리자 신고 상태 변경 처리: adminId={}, reportId={}, action={}, status={}",
+                adminId, reportId, action, report.getStatus());
 
         User reporter = userRepository.findById(report.getReporterId()).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 

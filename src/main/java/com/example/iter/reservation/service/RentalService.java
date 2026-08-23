@@ -30,6 +30,7 @@ import com.example.iter.reservation.event.RentalApprovedEvent;
 import com.example.iter.reservation.event.RentalCanceledEvent;
 import com.example.iter.reservation.event.RentalRejectedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,6 +48,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RentalService {
@@ -127,6 +129,8 @@ public class RentalService {
                 .build();
 
         Rental savedRental = rentalRepository.save(rental);
+        log.info("대여 신청 처리: rentalId={}, equipmentId={}, renterId={}, status={}",
+                savedRental.getId(), savedRental.getEquipmentId(), renterId, savedRental.getStatus());
         return RentalCreateResponse.from(savedRental);
     }
 
@@ -239,6 +243,8 @@ public class RentalService {
         }
 
         PaymentStatus paymentStatus = payment != null? payment.getStatus(): null;
+        log.info("대여 취소 처리: rentalId={}, actorId={}, actorType={}, status={}, paymentStatus={}",
+                rentalId, currentUserId, isAdmin ? "ADMIN" : "USER", rental.getStatus(), paymentStatus);
 
         return RentalCancelResponse.of(rental, paymentStatus);
     }
@@ -278,6 +284,8 @@ public class RentalService {
         // 예전처럼 "겹치는 다른 REQUESTED 자동 거절" 로직은 더 이상 필요 없다.
         rental.approve();
         eventPublisher.publishEvent(new RentalApprovedEvent(rental.getId()));
+        log.info("대여 승인 처리: rentalId={}, equipmentId={}, actorId={}, actorType={}, status={}",
+                rentalId, equipment.getId(), currentUserId, isAdmin ? "ADMIN" : "USER", rental.getStatus());
 
         return RentalApproveResponse.from(rental);
     }
@@ -301,6 +309,8 @@ public class RentalService {
         PaymentStatus paymentStatus = paymentRepository.findByRentalId(rentalId)
                 .map(Payment::getStatus)
                 .orElse(null);
+        log.info("대여 거절 처리: rentalId={}, actorId={}, actorType={}, status={}, paymentStatus={}",
+                rentalId, currentUserId, isAdmin ? "ADMIN" : "USER", rental.getStatus(), paymentStatus);
         return RentalRejectResponse.of(rental, paymentStatus);
     }
 

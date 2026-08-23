@@ -20,6 +20,7 @@ import com.example.iter.reservation.dto.response.ReturnConfirmationResponse;
 import com.example.iter.reservation.dto.response.ReturnTargetResponse;
 import com.example.iter.reservation.util.ReturnMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReturnService {
@@ -109,6 +111,8 @@ public class ReturnService {
 
         if (Boolean.FALSE.equals(request.hasIssue())) {
             rental.completeReturn();
+            log.info("대여 반납 확인 처리: rentalId={}, ownerId={}, status={}, hasIssue={}",
+                    rentalId, ownerId, rental.getStatus(), false);
 
             return returnMapper.toConfirmation(rental, null);
         }
@@ -116,6 +120,8 @@ public class ReturnService {
         Dispute dispute = createReturnDispute(rental, ownerId, request);
 
         rental.openReturnDispute();
+        log.info("대여 반납 분쟁 전환 처리: rentalId={}, ownerId={}, disputeId={}, status={}",
+                rentalId, ownerId, dispute.getId(), rental.getStatus());
 
         // 장비 상태는 변경하지 않습니다.
         // 장비 등록자가 이후 장비 관리 기능에서 직접 결정합니다.

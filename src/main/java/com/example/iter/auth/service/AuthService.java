@@ -11,11 +11,13 @@ import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AuthService {
 
@@ -39,6 +41,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        log.info("회원가입 처리: userId={}", savedUser.getId());
         return UserResponse.from(savedUser);
     }
 
@@ -51,7 +54,9 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        return issueTokens(user);
+        IssuedTokenPair tokenPair = issueTokens(user);
+        log.info("로그인 처리: userId={}, role={}", user.getId(), user.getRole());
+        return tokenPair;
     }
 
     public IssuedTokenPair issueTokens(User user) {
@@ -67,6 +72,7 @@ public class AuthService {
 
     public void logout(Long userId, String rawRefreshToken) {
         refreshTokenService.revoke(userId, rawRefreshToken);
+        log.info("로그아웃 처리: userId={}", userId);
     }
 
     private void validateLoginAllowed(User user) {
