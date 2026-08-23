@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,8 +59,7 @@ class NotificationServiceTest {
                 .id(id)
                 .receiverId(receiverId)
                 .type(NotificationType.RENTAL_APPROVED)
-                .title("제목")
-                .message("내용")
+                .params(Map.of("productName", "테스트 장비"))
                 .rentalId(10L)
                 .read(read)
                 .build();
@@ -72,7 +72,7 @@ class NotificationServiceTest {
         when(notificationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         notificationService().create(1L, "owner@test.com", NotificationType.RENTAL_REQUESTED,
-                "새로운 대여 신청", "메시지", 10L);
+                "새로운 대여 신청", "메시지", Map.of("productName", "테스트 장비"), 10L);
 
         verify(notificationSseService).send(eq(1L), any(NotificationResponse.class));
         verify(mailService).send(new MailMessage("owner@test.com", "noreply@iter.example.com", "새로운 대여 신청", "메시지"));
@@ -83,7 +83,7 @@ class NotificationServiceTest {
         when(notificationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         notificationService().create(2L, "renter@test.com", NotificationType.PAYMENT_COMPLETED_RENTER,
-                "결제 완료", "메시지", 10L);
+                "결제 완료", "메시지", Map.of("productName", "테스트 장비"), 10L);
 
         verify(notificationSseService).send(eq(2L), any(NotificationResponse.class));
         verify(mailService, never()).send(any());
