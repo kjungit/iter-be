@@ -23,6 +23,9 @@ public interface ReportRepository extends JpaRepository<Report, Long>, JpaSpecif
     // 특정 유형과 대상 ID로 접수된 신고 수를 조회합니다.
     long countByTargetTypeAndTargetId(ReportTargetType targetType, Long targetId);
 
+    // 관리자 대시보드 통계용으로 특정 처리 상태의 신고 수를 조회합니다.
+    long countByStatus(ReportStatus status);
+
     // 로그인 사용자가 작성한 특정 신고를 조회합니다.
     Optional<Report> findByIdAndReporterId(Long reportId, Long reporterId);
 
