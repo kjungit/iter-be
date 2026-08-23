@@ -14,14 +14,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -113,5 +116,48 @@ class NotificationServiceTest {
         int updated = notificationService().markAllRead(1L);
 
         assertThat(updated).isEqualTo(3);
+    }
+
+    @Test
+    void 다음_페이지가_있으면_size_1개를_받아_hasNext와_nextCursor를_계산한다() {
+        // size(2)보다 1개 더 많은 3개를 리포지토리가 돌려주면, 마지막 1개는 잘라내고 hasNext=true여야 한다.
+        List<Notification> fetched = List.of(
+                notification(30L, 1L, false),
+                notification(20L, 1L, false),
+                notification(10L, 1L, false)
+        );
+        when(notificationRepository.findNextByReceiverId(eq(1L), isNull(), any(Pageable.class)))
+                .thenReturn(fetched);
+
+        var response = notificationService().getNotifications(1L, false, null, 2);
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.content()).extracting(NotificationResponse::id).containsExactly(30L, 20L);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.nextCursor()).isEqualTo(20L);
+    }
+
+    @Test
+    void 남은_알림이_요청_size_이하면_hasNext는_false이고_nextCursor는_없다() {
+        List<Notification> fetched = List.of(notification(10L, 1L, false));
+        when(notificationRepository.findNextByReceiverId(eq(1L), eq(20L), any(Pageable.class)))
+                .thenReturn(fetched);
+
+        var response = notificationService().getNotifications(1L, false, 20L, 5);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.hasNext()).isFalse();
+        assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    void unreadOnly가_true면_읽지_않은_알림_전용_조회_메서드를_쓴다() {
+        when(notificationRepository.findNextUnreadByReceiverId(eq(1L), isNull(), any(Pageable.class)))
+                .thenReturn(List.of(notification(10L, 1L, false)));
+
+        notificationService().getNotifications(1L, true, null, 20);
+
+        verify(notificationRepository).findNextUnreadByReceiverId(eq(1L), isNull(), any(Pageable.class));
+        verify(notificationRepository, never()).findNextByReceiverId(any(), any(), any());
     }
 }

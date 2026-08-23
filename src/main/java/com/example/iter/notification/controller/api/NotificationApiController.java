@@ -1,6 +1,6 @@
 package com.example.iter.notification.controller.api;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.notification.dto.response.MarkAllReadResponse;
 import com.example.iter.notification.dto.response.NotificationResponse;
@@ -47,14 +47,14 @@ public class NotificationApiController implements NotificationApiSpec {
 
     @Override
     @GetMapping
-    public ResponseEntity<PageResponse<NotificationResponse>> getNotifications(
+    public ResponseEntity<CursorPageResponse<NotificationResponse>> getNotifications(
             @AuthenticationPrincipal CustomUserDetails principal,
             @RequestParam(defaultValue = "false") boolean unreadOnly,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "20") int size
     ) {
-        PageResponse<NotificationResponse> response = notificationService.getNotifications(
-                principal.getUser().getId(), unreadOnly, page, size);
+        CursorPageResponse<NotificationResponse> response = notificationService.getNotifications(
+                principal.getUser().getId(), unreadOnly, cursorId, size);
         return ResponseEntity.ok(response);
     }
 
