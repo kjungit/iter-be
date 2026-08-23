@@ -8,9 +8,11 @@ import com.example.iter.auth.dto.response.AddressResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserAddressService {
@@ -50,6 +52,8 @@ public class UserAddressService {
                         .detailAddress(request.detailAddress())
                         .defaultAddress(true)
                         .build()));
+
+        log.info("기본 배송지 변경 처리: userId={}, addressId={}", userId, address.getId());
 
         return AddressResponse.from(address);
     }
