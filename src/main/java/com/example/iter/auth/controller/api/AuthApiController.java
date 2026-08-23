@@ -1,6 +1,7 @@
 package com.example.iter.auth.controller.api;
 
 import com.example.iter.auth.controller.api.spec.AuthApiSpec;
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.dto.request.LoginRequest;
 import com.example.iter.auth.dto.request.SignUpRequest;
 import com.example.iter.auth.dto.response.AccessTokenResponse;
@@ -14,6 +15,7 @@ import com.example.iter.common.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.Locale;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +38,8 @@ public class AuthApiController implements AuthApiSpec {
 
     @Override
     @PostMapping("/signup")
-    public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request) {
-        UserResponse response = authService.signUp(request);
+    public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request, Locale locale) {
+        UserResponse response = authService.signUp(request, PreferredLanguage.fromLocale(locale));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);

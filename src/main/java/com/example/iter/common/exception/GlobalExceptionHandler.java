@@ -1,13 +1,16 @@
 package com.example.iter.common.exception;
 
 import com.example.iter.common.response.ErrorResponse;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.metadata.ConstraintDescriptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,11 +18,24 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 // API 명세의 { "code": "...", "message": "..." } 오류 형식을 적용한다.
 // (기획서 DoD "예외 상황(존재하지 않는 id, 소유권 없는 접근 등) 핸들링 적용" 대응)
+//
+// code/message는 그대로 백엔드 한국어 문구다(로그/개발자용, 프론트 표시용 아님) — 실제 번역은 프론트가
+// code(ErrorCode.name())를 키로 자체 사전에서 담당한다. @Valid 검증 실패는 한 줄 message로 뭉개지 않고
+// errors(필드별 constraint + params) 구조로도 같이 내려줘서, 프론트가 "Size, {max: 100}" 같은 걸로
+// 자체 문구를 조립할 수 있게 한다.
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // Bean Validation 애노테이션 속성 중 프론트에 의미 없는 것들 — params에서 제외
+    private static final Set<String> EXCLUDED_CONSTRAINT_ATTRIBUTES = Set.of("message", "groups", "payload");
 
     // 도메인에서 의도적으로 던진 비즈니스 예외
     @ExceptionHandler(CustomException.class)
@@ -34,6 +50,9 @@ public class GlobalExceptionHandler {
     // @Valid 검증 실패 (요청 DTO의 @NotNull, @NotBlank 등)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
+        List<ErrorResponse.FieldError> errors = e.getBindingResult().getFieldErrors().stream()
+                .map(this::toFieldError)
+                .toList();
         String message = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getDefaultMessage())
@@ -41,16 +60,47 @@ public class GlobalExceptionHandler {
         log.warn("Validation 실패: {}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.from(ErrorCode.VALIDATION_ERROR.name(), message));
+                .body(ErrorResponse.validation(ErrorCode.VALIDATION_ERROR.name(), message, errors));
     }
 
     // @RequestParam, @PathVariable 등에 붙은 제약조건 위반
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
         log.warn("ConstraintViolation: {}", e.getMessage());
+        List<ErrorResponse.FieldError> errors = e.getConstraintViolations().stream()
+                .map(this::toFieldError)
+                .toList();
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.from(ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getMessage()));
+                .body(ErrorResponse.validation(
+                        ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getMessage(), errors));
+    }
+
+    // MethodArgumentNotValidException의 FieldError는 @Valid/Hibernate Validator를 거쳤으면 내부적으로
+    // ConstraintViolation을 감싸고 있다 — unwrap으로 그걸 꺼내서 constraint 애노테이션 이름과 속성을 얻는다.
+    // 이 프로젝트엔 커스텀 Spring Validator가 없어서 항상 성공하지만, 혹시 Bean Validation을 거치지 않은
+    // FieldError(예: errors.rejectValue 직접 호출)가 생기면 unwrap이 실패하므로 대비해서 폴백한다.
+    private ErrorResponse.FieldError toFieldError(FieldError fieldError) {
+        try {
+            ConstraintViolation<?> violation = fieldError.unwrap(ConstraintViolation.class);
+            return toFieldError(fieldError.getField(), violation);
+        } catch (IllegalArgumentException ex) {
+            return new ErrorResponse.FieldError(fieldError.getField(), fieldError.getCode(), Map.of());
+        }
+    }
+
+    private ErrorResponse.FieldError toFieldError(ConstraintViolation<?> violation) {
+        String field = violation.getPropertyPath().toString();
+        return toFieldError(field, violation);
+    }
+
+    private ErrorResponse.FieldError toFieldError(String field, ConstraintViolation<?> violation) {
+        ConstraintDescriptor<?> descriptor = violation.getConstraintDescriptor();
+        String constraint = descriptor.getAnnotation().annotationType().getSimpleName();
+        Map<String, Object> params = descriptor.getAttributes().entrySet().stream()
+                .filter(entry -> !EXCLUDED_CONSTRAINT_ATTRIBUTES.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return new ErrorResponse.FieldError(field, constraint, params);
     }
 
     // @ModelAttribute 바인딩 실패 또는 enum 등 요청 파라미터 타입 변환 실패

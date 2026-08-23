@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -42,15 +43,17 @@ public class NotificationService {
     // — 원본 트랜잭션이 막 커밋된 직후라 기본 REQUIRED로는 새 트랜잭션이 제대로 시작되지 않고 조용히 아무 것도 커밋되지 않는 경우가 있다
     // (예외도 안 던져서 알아채기 어렵다)
     // REQUIRES_NEW로 독립된 트랜잭션을 확실히 새로 열어야 함
+    //
+    // title/message는 이메일 발송에만 쓰고 저장하지 않는다 — 저장/응답(SSE, API)엔 params만 들어간다.
+    // 프론트가 type + params로 자체 i18n 사전을 통해 표시 문구를 조립한다.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void create(Long receiverId, String receiverEmail, NotificationType type,
-                        String title, String message, Long rentalId) {
+                        String title, String message, Map<String, Object> params, Long rentalId) {
         Notification notification = notificationRepository.save(
                 Notification.builder()
                         .receiverId(receiverId)
                         .type(type)
-                        .title(title)
-                        .message(message)
+                        .params(params)
                         .rentalId(rentalId)
                         .build()
         );

@@ -1,5 +1,6 @@
 package com.example.iter.notification.service;
 
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.UserRepository;
 import com.example.iter.device.domain.entity.Equipment;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -96,11 +98,14 @@ class NotificationEventListenerTest {
         listener.onPaymentConfirmed(new PaymentConfirmedEvent(10L));
 
         verify(notificationService).create(
-                eq(99L), eq("owner@test.com"), eq(NotificationType.PAYMENT_COMPLETED_OWNER), any(), any(), eq(10L));
+                eq(99L), eq("owner@test.com"), eq(NotificationType.PAYMENT_COMPLETED_OWNER),
+                any(), any(), any(), eq(10L));
         verify(notificationService).create(
-                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_REQUESTED), any(), any(), eq(10L));
+                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_REQUESTED),
+                any(), any(), any(), eq(10L));
         verify(notificationService).create(
-                eq(2L), eq("renter@test.com"), eq(NotificationType.PAYMENT_COMPLETED_RENTER), any(), any(), eq(10L));
+                eq(2L), eq("renter@test.com"), eq(NotificationType.PAYMENT_COMPLETED_RENTER),
+                any(), any(), any(), eq(10L));
     }
 
     @Test
@@ -109,7 +114,7 @@ class NotificationEventListenerTest {
 
         listener.onPaymentConfirmed(new PaymentConfirmedEvent(10L));
 
-        verify(notificationService, never()).create(any(), any(), any(), any(), any(), any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -120,11 +125,11 @@ class NotificationEventListenerTest {
         when(userRepository.findById(99L)).thenReturn(Optional.of(user(99L, "owner@test.com", "등록자")));
         doThrow(new RuntimeException("일시적 DB 오류"))
                 .when(notificationService)
-                .create(eq(99L), any(), eq(NotificationType.PAYMENT_COMPLETED_OWNER), any(), any(), anyLong());
+                .create(eq(99L), any(), eq(NotificationType.PAYMENT_COMPLETED_OWNER), any(), any(), any(), anyLong());
 
         listener.onPaymentConfirmed(new PaymentConfirmedEvent(10L));
 
-        verify(notificationService, times(3)).create(any(), any(), any(), any(), any(), any());
+        verify(notificationService, times(3)).create(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -135,7 +140,26 @@ class NotificationEventListenerTest {
         listener.onRentalApproved(new RentalApprovedEvent(10L));
 
         verify(notificationService).create(
-                eq(2L), eq("renter@test.com"), eq(NotificationType.RENTAL_APPROVED), any(), any(), eq(10L));
+                eq(2L), eq("renter@test.com"), eq(NotificationType.RENTAL_APPROVED),
+                any(), any(), any(), eq(10L));
+    }
+
+    @Test
+    void 영어를_선호하는_수신자에게는_영어_이메일_문구를_만든다() {
+        when(rentalRepository.findById(10L)).thenReturn(Optional.of(rental(RentalStatus.APPROVED)));
+        User englishRenter = User.builder()
+                .id(2L)
+                .email("renter@test.com")
+                .name("대여자")
+                .preferredLanguage(PreferredLanguage.EN)
+                .build();
+        when(userRepository.findById(2L)).thenReturn(Optional.of(englishRenter));
+
+        listener.onRentalApproved(new RentalApprovedEvent(10L));
+
+        verify(notificationService).create(
+                eq(2L), eq("renter@test.com"), eq(NotificationType.RENTAL_APPROVED),
+                eq("Rental request approved"), startsWith("Your rental request for"), any(), eq(10L));
     }
 
     @Test
@@ -150,7 +174,7 @@ class NotificationEventListenerTest {
 
         verify(notificationService).create(
                 eq(2L), eq("renter@test.com"), eq(NotificationType.RENTAL_REJECTED),
-                any(), contains("환불"), eq(10L));
+                any(), contains("환불"), any(), eq(10L));
     }
 
     @Test
@@ -163,7 +187,7 @@ class NotificationEventListenerTest {
 
         verify(notificationService).create(
                 eq(2L), eq("renter@test.com"), eq(NotificationType.RENTAL_REJECTED),
-                any(), argThat((String message) -> !message.contains("환불")), eq(10L));
+                any(), argThat((String message) -> !message.contains("환불")), any(), eq(10L));
     }
 
     @Test
@@ -176,7 +200,8 @@ class NotificationEventListenerTest {
         listener.onRentalCanceled(new RentalCanceledEvent(10L));
 
         verify(notificationService).create(
-                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_CANCELED), any(), any(), eq(10L));
+                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_CANCELED),
+                any(), any(), any(), eq(10L));
     }
 
     @Test
@@ -189,7 +214,8 @@ class NotificationEventListenerTest {
         listener.onRentalReceived(new RentalReceivedEvent(10L));
 
         verify(notificationService).create(
-                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_RECEIVED), any(), any(), eq(10L));
+                eq(99L), eq("owner@test.com"), eq(NotificationType.RENTAL_RECEIVED),
+                any(), any(), any(), eq(10L));
     }
 
     @Test
@@ -199,6 +225,6 @@ class NotificationEventListenerTest {
 
         listener.onRentalReceived(new RentalReceivedEvent(10L));
 
-        verify(notificationService, never()).create(any(), any(), any(), any(), any(), any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any(), any(), any());
     }
 }

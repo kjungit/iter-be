@@ -3,6 +3,7 @@ package com.example.iter.auth.service;
 import com.example.iter.auth.domain.entity.OAuthAccount;
 import com.example.iter.auth.domain.repository.OAuthAccountRepository;
 import com.example.iter.auth.domain.repository.UserRepository;
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.dto.request.KakaoSignUpRequest;
 import com.example.iter.auth.dto.response.OAuthAction;
@@ -40,7 +41,7 @@ public class OAuth2AuthService {
     }
 
     @Transactional
-    public IssuedTokenPair signUp(KakaoSignUpRequest request) {
+    public IssuedTokenPair signUp(KakaoSignUpRequest request, PreferredLanguage preferredLanguage) {
         ConsumedOAuthToken pending = pendingTokenService.consumeActionToken(request.oauthToken());
         if (pending.targetUserId() != null) {
             throw new CustomException(ErrorCode.OAUTH_TOKEN_INVALID);
@@ -62,6 +63,7 @@ public class OAuth2AuthService {
                     .name(request.name())
                     .nickname(request.nickname())
                     .phone(request.phone())
+                    .preferredLanguage(preferredLanguage)
                     .build());
         } catch (DataIntegrityViolationException exception) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);

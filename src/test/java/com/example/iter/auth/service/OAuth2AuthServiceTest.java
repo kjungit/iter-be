@@ -2,6 +2,7 @@ package com.example.iter.auth.service;
 
 import com.example.iter.auth.domain.entity.OAuthAccount;
 import com.example.iter.auth.domain.entity.OAuthProvider;
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.repository.OAuthAccountRepository;
 import com.example.iter.auth.domain.repository.OAuthPendingTokenRepository;
@@ -122,7 +123,7 @@ class OAuth2AuthServiceTest {
                 "홍길동",
                 "길동",
                 "010-1234-5678"
-        ));
+        ), PreferredLanguage.KO);
 
         User savedUser = userRepository.findByEmail("new@example.com").orElseThrow();
         assertThat(savedUser.getPassword()).isNull();
@@ -145,7 +146,7 @@ class OAuth2AuthServiceTest {
                 "010-1234-5678"
         );
         assertCustomError(
-                () -> oAuth2AuthService.signUp(mismatchedRequest),
+                () -> oAuth2AuthService.signUp(mismatchedRequest, PreferredLanguage.KO),
                 ErrorCode.OAUTH_EMAIL_MISMATCH
         );
         assertThat(userRepository.count()).isZero();
@@ -157,7 +158,7 @@ class OAuth2AuthServiceTest {
                 "홍길동",
                 "길동",
                 "010-1234-5678"
-        ));
+        ), PreferredLanguage.KO);
         assertThat(userRepository.findByEmail("verified@example.com")).isPresent();
     }
 
@@ -252,10 +253,10 @@ class OAuth2AuthServiceTest {
                 "010-1234-5678"
         );
 
-        oAuth2AuthService.signUp(request);
+        oAuth2AuthService.signUp(request, PreferredLanguage.KO);
 
         assertCustomError(
-                () -> oAuth2AuthService.signUp(request),
+                () -> oAuth2AuthService.signUp(request, PreferredLanguage.KO),
                 ErrorCode.OAUTH_TOKEN_ALREADY_USED
         );
     }

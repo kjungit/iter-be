@@ -52,25 +52,27 @@ public class NotificationEventListener {
         String productName = rental.getProductNameSnapshot();
 
         if (owner != null) {
+            NotificationMessages.Content paymentCompletedOwner = NotificationMessages.paymentCompletedOwner(
+                    renter != null ? renter.getName() : "대여자", productName, owner.getPreferredLanguage());
             notify(() -> notificationService.create(
                     owner.getId(), owner.getEmail(), NotificationType.PAYMENT_COMPLETED_OWNER,
-                    "결제가 완료되었습니다",
-                    "%s님이 [%s] 대여 건의 결제를 완료했습니다.".formatted(
-                            renter != null ? renter.getName() : "대여자", productName),
+                    paymentCompletedOwner.title(), paymentCompletedOwner.message(), paymentCompletedOwner.params(),
                     rental.getId()
             ));
+            NotificationMessages.Content rentalRequested =
+                    NotificationMessages.rentalRequested(productName, owner.getPreferredLanguage());
             notify(() -> notificationService.create(
                     owner.getId(), owner.getEmail(), NotificationType.RENTAL_REQUESTED,
-                    "새로운 대여 신청이 도착했습니다",
-                    "[%s] 대여 신청이 도착했습니다. 승인 대기 목록을 확인해주세요.".formatted(productName),
+                    rentalRequested.title(), rentalRequested.message(), rentalRequested.params(),
                     rental.getId()
             ));
         }
         if (renter != null) {
+            NotificationMessages.Content paymentCompletedRenter =
+                    NotificationMessages.paymentCompletedRenter(productName, renter.getPreferredLanguage());
             notify(() -> notificationService.create(
                     renter.getId(), renter.getEmail(), NotificationType.PAYMENT_COMPLETED_RENTER,
-                    "결제가 완료되었습니다",
-                    "[%s] 대여 결제가 완료되었습니다. 등록자의 승인을 기다려주세요.".formatted(productName),
+                    paymentCompletedRenter.title(), paymentCompletedRenter.message(), paymentCompletedRenter.params(),
                     rental.getId()
             ));
         }
@@ -86,10 +88,11 @@ public class NotificationEventListener {
         if (renter == null) {
             return;
         }
+        NotificationMessages.Content content = NotificationMessages.rentalApproved(
+                rental.getProductNameSnapshot(), renter.getPreferredLanguage());
         notify(() -> notificationService.create(
                 renter.getId(), renter.getEmail(), NotificationType.RENTAL_APPROVED,
-                "대여 요청이 승인되었습니다",
-                "[%s] 대여 요청이 승인되었습니다.".formatted(rental.getProductNameSnapshot()),
+                content.title(), content.message(), content.params(),
                 rental.getId()
         ));
     }
@@ -109,13 +112,12 @@ public class NotificationEventListener {
                 .map(Payment::getStatus)
                 .map(status -> status == PaymentStatus.REFUNDED)
                 .orElse(false);
-        String refundNotice = refunded ? " 결제 금액은 환불 처리되었습니다." : "";
 
+        NotificationMessages.Content content = NotificationMessages.rentalRejected(
+                rental.getProductNameSnapshot(), rental.getRejectReason(), refunded, renter.getPreferredLanguage());
         notify(() -> notificationService.create(
                 renter.getId(), renter.getEmail(), NotificationType.RENTAL_REJECTED,
-                "대여 요청이 거절되었습니다",
-                "[%s] 대여 요청이 거절되었습니다. 사유: %s.%s".formatted(
-                        rental.getProductNameSnapshot(), rental.getRejectReason(), refundNotice),
+                content.title(), content.message(), content.params(),
                 rental.getId()
         ));
     }
@@ -136,11 +138,12 @@ public class NotificationEventListener {
             return;
         }
 
+        NotificationMessages.Content content = NotificationMessages.rentalCanceled(
+                renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot(),
+                owner.getPreferredLanguage());
         notify(() -> notificationService.create(
                 owner.getId(), owner.getEmail(), NotificationType.RENTAL_CANCELED,
-                "대여 요청이 취소되었습니다",
-                "%s님이 [%s] 대여 요청을 취소했습니다.".formatted(
-                        renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot()),
+                content.title(), content.message(), content.params(),
                 rental.getId()
         ));
     }
@@ -161,11 +164,12 @@ public class NotificationEventListener {
             return;
         }
 
+        NotificationMessages.Content content = NotificationMessages.rentalReceived(
+                renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot(),
+                owner.getPreferredLanguage());
         notify(() -> notificationService.create(
                 owner.getId(), owner.getEmail(), NotificationType.RENTAL_RECEIVED,
-                "대여자가 수령을 확인했습니다",
-                "%s님이 [%s] 물품 수령을 확인했습니다. 대여가 시작됩니다.".formatted(
-                        renter != null ? renter.getName() : "대여자", rental.getProductNameSnapshot()),
+                content.title(), content.message(), content.params(),
                 rental.getId()
         ));
     }

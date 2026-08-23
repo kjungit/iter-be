@@ -65,6 +65,12 @@ public class User extends BaseTimeEntity {
     @Column(name = "point_balance", nullable = false, precision = 12, scale = 0)
     private BigDecimal pointBalance = BigDecimal.ZERO;
 
+    // 이메일 등 백엔드가 직접 언어를 확정해서 보내야 하는 콘텐츠에만 쓰인다 (docs/i18n-frontend-handoff.md 참고).
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "preferred_language", nullable = false, length = 10)
+    private PreferredLanguage preferredLanguage = PreferredLanguage.KO;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -74,10 +80,11 @@ public class User extends BaseTimeEntity {
         this.password = encodedPassword;
     }
 
-    public void updateProfile(String name, String nickname, String phone) {
+    public void updateProfile(String name, String nickname, String phone, PreferredLanguage preferredLanguage) {
         this.name = name;
         this.nickname = nickname;
         this.phone = phone;
+        this.preferredLanguage = preferredLanguage;
     }
 
     public void suspend() {

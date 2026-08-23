@@ -1,5 +1,6 @@
 package com.example.iter.auth.dto.request;
 
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.constraints.AssertTrue;
@@ -19,6 +20,9 @@ public class UserUpdateRequest {
         @Pattern(regexp = "^01[0-9]-?\\d{3,4}-?\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
         private String phone;
 
+        // 이메일 등 백엔드가 직접 언어를 확정해서 보내야 하는 콘텐츠(현재는 이메일)에 쓰인다.
+        private PreferredLanguage preferredLanguage;
+
     @JsonSetter(value = "name", nulls = Nulls.FAIL)
     public void setName(String name) {
         this.name = name.trim();
@@ -34,6 +38,11 @@ public class UserUpdateRequest {
         this.phone = phone.trim();
     }
 
+    @JsonSetter(value = "preferredLanguage", nulls = Nulls.FAIL)
+    public void setPreferredLanguage(PreferredLanguage preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
+    }
+
     public String name() {
         return name;
     }
@@ -46,8 +55,12 @@ public class UserUpdateRequest {
         return phone;
     }
 
+    public PreferredLanguage preferredLanguage() {
+        return preferredLanguage;
+    }
+
     @AssertTrue(message = "변경할 회원 정보를 하나 이상 입력해주세요.")
     public boolean isAnyFieldPresent() {
-        return name != null || nickname != null || phone != null;
+        return name != null || nickname != null || phone != null || preferredLanguage != null;
     }
 }
