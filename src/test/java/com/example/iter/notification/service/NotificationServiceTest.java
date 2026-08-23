@@ -7,6 +7,8 @@ import com.example.iter.common.mail.MailService;
 import com.example.iter.notification.config.NotificationProperties;
 import com.example.iter.notification.domain.entity.Notification;
 import com.example.iter.notification.domain.entity.NotificationType;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.notification.domain.repository.NotificationRepository;
 import com.example.iter.notification.dto.response.NotificationResponse;
 import com.example.iter.notification.sse.NotificationSseService;
@@ -15,8 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,7 +50,11 @@ class NotificationServiceTest {
     }
 
     private Notification notification(Long id, Long receiverId, boolean read) {
-        return Notification.builder()
+        return notification(id, receiverId, read, LocalDateTime.now());
+    }
+
+    private Notification notification(Long id, Long receiverId, boolean read, LocalDateTime createdAt) {
+        Notification notification = Notification.builder()
                 .id(id)
                 .receiverId(receiverId)
                 .type(NotificationType.RENTAL_APPROVED)
@@ -58,6 +63,8 @@ class NotificationServiceTest {
                 .rentalId(10L)
                 .read(read)
                 .build();
+        ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+        return notification;
     }
 
     @Test
@@ -121,31 +128,32 @@ class NotificationServiceTest {
     }
 
     @Test
-    void 다음_페이지가_있으면_size_1개를_받아_hasNext와_nextCursor를_계산한다() {
+    void 다음_페이지가_있으면_size_1개를_더_받아_hasNext와_nextCursor를_계산한다() {
         // size(2)보다 1개 더 많은 3개를 리포지토리가 돌려주면, 마지막 1개는 잘라내고 hasNext=true여야 한다.
-        List<Notification> fetched = List.of(
-                notification(30L, 1L, false),
-                notification(20L, 1L, false),
-                notification(10L, 1L, false)
-        );
-        when(notificationRepository.findNextByReceiverId(eq(1L), isNull(), any(Pageable.class)))
-                .thenReturn(fetched);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 23, 10, 0);
+        Notification first = notification(30L, 1L, false, now);
+        Notification second = notification(20L, 1L, false, now.minusMinutes(1));
+        Notification third = notification(10L, 1L, false, now.minusMinutes(2));
+        when(notificationRepository.findNextByReceiverId(eq(1L), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(List.of(first, second, third));
 
         var response = notificationService().getNotifications(1L, false, null, 2);
 
-        assertThat(response.content()).hasSize(2);
         assertThat(response.content()).extracting(NotificationResponse::id).containsExactly(30L, 20L);
         assertThat(response.hasNext()).isTrue();
-        assertThat(response.nextCursor()).isEqualTo(20L);
+        assertThat(response.nextCursor())
+                .isEqualTo(CursorCodec.encode(new CursorKey(second.getCreatedAt(), second.getId())));
     }
 
     @Test
     void 남은_알림이_요청_size_이하면_hasNext는_false이고_nextCursor는_없다() {
-        List<Notification> fetched = List.of(notification(10L, 1L, false));
-        when(notificationRepository.findNextByReceiverId(eq(1L), eq(20L), any(Pageable.class)))
-                .thenReturn(fetched);
+        LocalDateTime cursorCreatedAt = LocalDateTime.of(2026, 8, 23, 9, 0);
+        String cursor = CursorCodec.encode(new CursorKey(cursorCreatedAt, 20L));
+        Notification only = notification(10L, 1L, false, cursorCreatedAt.minusMinutes(1));
+        when(notificationRepository.findNextByReceiverId(eq(1L), eq(cursorCreatedAt), eq(20L), any(Pageable.class)))
+                .thenReturn(List.of(only));
 
-        var response = notificationService().getNotifications(1L, false, 20L, 5);
+        var response = notificationService().getNotifications(1L, false, cursor, 5);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.hasNext()).isFalse();
@@ -154,38 +162,12 @@ class NotificationServiceTest {
 
     @Test
     void unreadOnly가_true면_읽지_않은_알림_전용_조회_메서드를_쓴다() {
-        when(notificationRepository.findNextUnreadByReceiverId(eq(1L), isNull(), any(Pageable.class)))
+        when(notificationRepository.findNextUnreadByReceiverId(eq(1L), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of(notification(10L, 1L, false)));
 
         notificationService().getNotifications(1L, true, null, 20);
 
-        verify(notificationRepository).findNextUnreadByReceiverId(eq(1L), isNull(), any(Pageable.class));
-        verify(notificationRepository, never()).findNextByReceiverId(any(), any(), any());
-    }
-
-    @Test
-    void 알림_목록은_생성시각과_ID_내림차순_조회에_위임한다() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        Notification target = notification(2L, 1L, false);
-        when(notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(1L, pageable))
-                .thenReturn(new PageImpl<>(List.of(target), pageable, 1));
-
-        var response = notificationService().getNotifications(1L, false, 0, 20);
-
-        assertThat(response.content()).singleElement()
-                .satisfies(item -> assertThat(item.id()).isEqualTo(2L));
-        verify(notificationRepository).findByReceiverIdOrderByCreatedAtDescIdDesc(1L, pageable);
-    }
-
-    @Test
-    void 읽지_않은_알림_목록도_생성시각과_ID_내림차순_조회에_위임한다() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(1L, pageable))
-                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
-
-        var response = notificationService().getNotifications(1L, true, 0, 20);
-
-        assertThat(response.content()).isEmpty();
-        verify(notificationRepository).findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(1L, pageable);
+        verify(notificationRepository).findNextUnreadByReceiverId(eq(1L), isNull(), isNull(), any(Pageable.class));
+        verify(notificationRepository, never()).findNextByReceiverId(any(), any(), any(), any());
     }
 }

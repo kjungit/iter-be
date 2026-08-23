@@ -87,25 +87,15 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Rental> findWithLockById(Long rentalId);
     /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약 ID를 최대 한 건 조회합니다. */
-    @Query(
-            "SELECT r.id " +
-            "FROM Rental r " +
-            "WHERE r.equipmentId = :equipmentId " +
-            "AND r.status NOT IN :excludedStatuses " +
-            "AND r.startDate <= :endDate " +
-            "AND r.endDate >= :startDate"
-    )
-    List<Long> findConflictingOccupyingRentalIds(
-    /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약이 있는지 확인합니다. */
     @Query("""
-            select case when count(r) > 0 then true else false end
+            select r.id
             from Rental r
             where r.equipmentId = :equipmentId
               and r.status not in :excludedStatuses
               and r.startDate <= :endDate
               and r.endDate >= :startDate
             """)
-    boolean existsConflictingOccupyingRental(
+    List<Long> findConflictingOccupyingRentalIds(
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
@@ -150,7 +140,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("excludedStatuses") Collection<RentalStatus> excludedStatuses
-                                            );
+    );
 
     boolean existsByEquipmentIdAndStatusIn(
             Long equipmentId,

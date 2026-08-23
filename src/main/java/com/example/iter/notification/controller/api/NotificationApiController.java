@@ -50,11 +50,11 @@ public class NotificationApiController implements NotificationApiSpec {
     public ResponseEntity<CursorPageResponse<NotificationResponse>> getNotifications(
             @AuthenticationPrincipal CustomUserDetails principal,
             @RequestParam(defaultValue = "false") boolean unreadOnly,
-            @RequestParam(required = false) Long cursorId,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
         CursorPageResponse<NotificationResponse> response = notificationService.getNotifications(
-                principal.getUser().getId(), unreadOnly, cursorId, size);
+                principal.getUser().getId(), unreadOnly, cursor, size);
         return ResponseEntity.ok(response);
     }
 

@@ -5,6 +5,8 @@ import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.mail.MailMessage;
 import com.example.iter.common.mail.MailService;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.notification.config.NotificationProperties;
 import com.example.iter.notification.domain.entity.Notification;
 import com.example.iter.notification.domain.entity.NotificationType;
@@ -67,22 +69,24 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, Long cursorId, int size) {
+    public CursorPageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, String cursor, int size) {
+        CursorKey cursorKey = CursorCodec.decode(cursor);
+        LocalDateTime cursorCreatedAt = cursorKey == null ? null : cursorKey.createdAt();
+        Long cursorId = cursorKey == null ? null : cursorKey.id();
+
         // size + 1개를 가져와서, 실제로 나온 개수가 size보다 많으면 다음 페이지가 있다는 뜻이다
-        // (count 쿼리 없이 hasNext를 판단하기 위한 트릭 — CursorPageResponse.of 참고).
+        // (count 쿼리 없이 hasNext를 판단하기 위한 트릭 — CursorPageResponse.from 참고).
         Pageable limit = PageRequest.of(0, size + 1);
         List<Notification> notifications = unreadOnly
-                ? notificationRepository.findNextUnreadByReceiverId(userId, cursorId, limit)
-                : notificationRepository.findNextByReceiverId(userId, cursorId, limit);
+                ? notificationRepository.findNextUnreadByReceiverId(userId, cursorCreatedAt, cursorId, limit)
+                : notificationRepository.findNextByReceiverId(userId, cursorCreatedAt, cursorId, limit);
 
-        List<NotificationResponse> responses = notifications.stream().map(NotificationResponse::from).toList();
-        return CursorPageResponse.of(responses, size, NotificationResponse::id);
-    public PageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Notification> result = unreadOnly
-                ? notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(userId, pageable)
-                : notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(userId, pageable);
-        return PageResponse.from(result.map(NotificationResponse::from));
+        return CursorPageResponse.from(
+                notifications,
+                size,
+                NotificationResponse::from,
+                notification -> new CursorKey(notification.getCreatedAt(), notification.getId())
+        );
     }
 
     @Transactional(readOnly = true)

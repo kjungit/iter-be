@@ -29,14 +29,14 @@ public interface NotificationApiSpec {
 
     @Operation(
             summary = "알림 목록 조회",
-            description = "offset이 아닌 cursor(keyset) 방식이다. 첫 요청은 cursorId 없이 보내고, "
-                    + "응답의 nextCursor를 다음 요청의 cursorId로 그대로 넘기면 이어서 조회된다. hasNext가 false면 더 없다는 뜻.",
+            description = "offset이 아닌 cursor(keyset) 방식이다. 첫 요청은 cursor 없이 보내고, "
+                    + "응답의 nextCursor를 다음 요청의 cursor로 그대로 넘기면 이어서 조회된다. hasNext가 false면 더 없다는 뜻.",
             security = @SecurityRequirement(name = "JWT")
     )
     ResponseEntity<CursorPageResponse<NotificationResponse>> getNotifications(
             @Parameter(hidden = true) CustomUserDetails principal,
             @Parameter(description = "읽지 않은 알림만 조회") boolean unreadOnly,
-            @Parameter(description = "이전 응답의 nextCursor. 첫 요청이면 생략") Long cursorId,
+            @Parameter(description = "이전 응답의 nextCursor. 첫 요청이면 생략") String cursor,
             @Parameter(description = "페이지 크기") int size
     );
 
