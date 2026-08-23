@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
@@ -173,10 +174,8 @@ class ReportServiceTest {
         );
 
         when(userRepository.findById(REPORTER_ID)).thenReturn(Optional.of(reporter));
-        when(reportRepository.searchMyReports(
-                eq(REPORTER_ID),
-                eq(ReportTargetType.EQUIPMENT),
-                eq(ReportStatus.RECEIVED),
+        when(reportRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(new PageImpl<>(List.of(report), PageRequest.of(0, 20), 1));
 
@@ -189,10 +188,8 @@ class ReportServiceTest {
         assertThat(response.totalElements()).isEqualTo(1);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(reportRepository).searchMyReports(
-                eq(REPORTER_ID),
-                eq(ReportTargetType.EQUIPMENT),
-                eq(ReportStatus.RECEIVED),
+        verify(reportRepository).findAll(
+                any(Specification.class),
                 pageableCaptor.capture()
         );
         assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();

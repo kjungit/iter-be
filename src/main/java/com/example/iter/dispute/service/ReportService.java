@@ -9,6 +9,7 @@ import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.repository.ReportRepository;
+import com.example.iter.dispute.domain.repository.spec.ReportSpecifications;
 import com.example.iter.dispute.dto.request.ReportCreateRequest;
 import com.example.iter.dispute.dto.request.ReportSearchRequest;
 import com.example.iter.dispute.dto.response.ReportDetailResponse;
@@ -71,10 +72,8 @@ public class ReportService {
     public PageResponse<ReportSummaryResponse> getMyReports(Long reporterId, ReportSearchRequest request) {
         User reporter = userRepository.findById(reporterId).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        Page<ReportSummaryResponse> reports = reportRepository.searchMyReports(
-                reporterId,
-                request.targetType(),
-                request.status(),
+        Page<ReportSummaryResponse> reports = reportRepository.findAll(
+                ReportSpecifications.myReports(reporterId, request.targetType(), request.status()),
                 reportPageable(request.page(), request.size())
         ).map(report -> reportMapper.toSummary(report, reporter));
 

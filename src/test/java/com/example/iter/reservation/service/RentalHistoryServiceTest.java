@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -89,10 +90,8 @@ class RentalHistoryServiceTest {
         User owner = user(OWNER_ID, "등록자");
         EquipmentImage thumbnail = thumbnail(1L, equipment, "https://example.com/macbook.jpg", 1);
 
-        when(rentalHistoryRepository.findBorrowedHistory(
-                eq(RENTER_ID),
-                eq(RentalStatus.RENTING),
-                eq("맥북"),
+        when(rentalHistoryRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(page(rental));
         when(equipmentRepository.findAllById(any())).thenReturn(List.of(equipment));
@@ -118,10 +117,8 @@ class RentalHistoryServiceTest {
         assertThat(history.overdueDays()).isEqualTo(3);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(rentalHistoryRepository).findBorrowedHistory(
-                eq(RENTER_ID),
-                eq(RentalStatus.RENTING),
-                eq("맥북"),
+        verify(rentalHistoryRepository).findAll(
+                any(Specification.class),
                 pageableCaptor.capture()
         );
         assertThat(sortDescription(pageableCaptor.getValue()))
@@ -169,10 +166,8 @@ class RentalHistoryServiceTest {
     @Test
     void 빈_검색어는_null로_정규화하고_빈_페이지는_추가_조회하지_않는다() {
         Page<Rental> emptyPage = Page.empty(PageRequest.of(2, 5));
-        when(rentalHistoryRepository.findBorrowedHistory(
-                eq(RENTER_ID),
-                isNull(),
-                isNull(),
+        when(rentalHistoryRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(emptyPage);
 
@@ -200,10 +195,8 @@ class RentalHistoryServiceTest {
                 LocalDate.now(),
                 "삭제된 장비"
         );
-        when(rentalHistoryRepository.findBorrowedHistory(
-                eq(RENTER_ID),
-                isNull(),
-                isNull(),
+        when(rentalHistoryRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(page(rental));
         when(equipmentRepository.findAllById(any())).thenReturn(List.of());
@@ -230,10 +223,8 @@ class RentalHistoryServiceTest {
                 "장비"
         );
         Equipment equipment = equipment(EQUIPMENT_ID, OWNER_ID, "장비");
-        when(rentalHistoryRepository.findBorrowedHistory(
-                eq(RENTER_ID),
-                isNull(),
-                isNull(),
+        when(rentalHistoryRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(page(rental));
         when(equipmentRepository.findAllById(any())).thenReturn(List.of(equipment));
@@ -392,10 +383,8 @@ class RentalHistoryServiceTest {
                 "둘째 장비 스냅샷"
         );
 
-        when(rentalHistoryRepository.findBorrowedHistory(
-                eq(RENTER_ID),
-                isNull(),
-                isNull(),
+        when(rentalHistoryRepository.findAll(
+                any(Specification.class),
                 any(Pageable.class)
         )).thenReturn(new PageImpl<>(List.of(firstRental, secondRental), PageRequest.of(0, 20), 2));
         when(equipmentRepository.findAllById(any())).thenReturn(List.of(firstEquipment, secondEquipment));

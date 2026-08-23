@@ -1,10 +1,12 @@
 package com.example.iter.notification.service;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.exception.CustomException;
 import com.example.iter.common.exception.ErrorCode;
 import com.example.iter.common.mail.MailMessage;
 import com.example.iter.common.mail.MailService;
+import com.example.iter.common.pagination.CursorCodec;
+import com.example.iter.common.pagination.CursorKey;
 import com.example.iter.notification.config.NotificationProperties;
 import com.example.iter.notification.domain.entity.Notification;
 import com.example.iter.notification.domain.entity.NotificationType;
@@ -13,7 +15,6 @@ import com.example.iter.notification.dto.response.NotificationResponse;
 import com.example.iter.notification.sse.NotificationSseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -67,12 +69,24 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Notification> result = unreadOnly
-                ? notificationRepository.findByReceiverIdAndReadFalseOrderByCreatedAtDescIdDesc(userId, pageable)
-                : notificationRepository.findByReceiverIdOrderByCreatedAtDescIdDesc(userId, pageable);
-        return PageResponse.from(result.map(NotificationResponse::from));
+    public CursorPageResponse<NotificationResponse> getNotifications(Long userId, boolean unreadOnly, String cursor, int size) {
+        CursorKey cursorKey = CursorCodec.decode(cursor);
+        LocalDateTime cursorCreatedAt = cursorKey == null ? null : cursorKey.createdAt();
+        Long cursorId = cursorKey == null ? null : cursorKey.id();
+
+        // size + 1개를 가져와서, 실제로 나온 개수가 size보다 많으면 다음 페이지가 있다는 뜻이다
+        // (count 쿼리 없이 hasNext를 판단하기 위한 트릭 — CursorPageResponse.from 참고).
+        Pageable limit = PageRequest.of(0, size + 1);
+        List<Notification> notifications = unreadOnly
+                ? notificationRepository.findNextUnreadByReceiverId(userId, cursorCreatedAt, cursorId, limit)
+                : notificationRepository.findNextByReceiverId(userId, cursorCreatedAt, cursorId, limit);
+
+        return CursorPageResponse.from(
+                notifications,
+                size,
+                NotificationResponse::from,
+                notification -> new CursorKey(notification.getCreatedAt(), notification.getId())
+        );
     }
 
     @Transactional(readOnly = true)

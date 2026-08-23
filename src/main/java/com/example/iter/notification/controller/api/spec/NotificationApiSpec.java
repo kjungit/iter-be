@@ -1,6 +1,6 @@
 package com.example.iter.notification.controller.api.spec;
 
-import com.example.iter.common.dto.response.PageResponse;
+import com.example.iter.common.dto.response.CursorPageResponse;
 import com.example.iter.common.security.CustomUserDetails;
 import com.example.iter.notification.dto.response.MarkAllReadResponse;
 import com.example.iter.notification.dto.response.NotificationResponse;
@@ -27,11 +27,16 @@ public interface NotificationApiSpec {
     @Operation(summary = "실시간 알림 구독 (SSE)", description = "쿼리 파라미터로 /sse-ticket에서 발급받은 ticket을 전달한다.")
     SseEmitter subscribe(@Parameter(hidden = true) CustomUserDetails principal);
 
-    @Operation(summary = "알림 목록 조회", security = @SecurityRequirement(name = "JWT"))
-    ResponseEntity<PageResponse<NotificationResponse>> getNotifications(
+    @Operation(
+            summary = "알림 목록 조회",
+            description = "offset이 아닌 cursor(keyset) 방식이다. 첫 요청은 cursor 없이 보내고, "
+                    + "응답의 nextCursor를 다음 요청의 cursor로 그대로 넘기면 이어서 조회된다. hasNext가 false면 더 없다는 뜻.",
+            security = @SecurityRequirement(name = "JWT")
+    )
+    ResponseEntity<CursorPageResponse<NotificationResponse>> getNotifications(
             @Parameter(hidden = true) CustomUserDetails principal,
             @Parameter(description = "읽지 않은 알림만 조회") boolean unreadOnly,
-            @Parameter(description = "페이지 번호 (0부터 시작)") int page,
+            @Parameter(description = "이전 응답의 nextCursor. 첫 요청이면 생략") String cursor,
             @Parameter(description = "페이지 크기") int size
     );
 

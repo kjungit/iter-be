@@ -12,6 +12,7 @@ import com.example.iter.device.domain.repository.EquipmentImageRepository;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.repository.RentalHistoryRepository;
+import com.example.iter.reservation.domain.repository.spec.RentalSpecifications;
 import com.example.iter.reservation.dto.request.RentalHistorySearchRequest;
 import com.example.iter.reservation.dto.response.RentalHistoryResponse;
 import com.example.iter.reservation.util.RentalHistoryMapper;
@@ -46,10 +47,8 @@ public class RentalHistoryService {
     // 로그인 사용자가 빌린 장비 이력을 조회합니다.
     @Transactional(readOnly = true)
     public PageResponse<RentalHistoryResponse> getBorrowedHistory(Long renterId, RentalHistorySearchRequest request) {
-        Page<Rental> rentals = rentalHistoryRepository.findBorrowedHistory(
-                renterId,
-                request.status(),
-                normalizeKeyword(request.equipmentName()),
+        Page<Rental> rentals = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(renterId, request.status(), normalizeKeyword(request.equipmentName())),
                 historyPageable(request.page(), request.size())
         );
 
