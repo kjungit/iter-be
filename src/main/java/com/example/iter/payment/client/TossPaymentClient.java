@@ -45,7 +45,7 @@ public class TossPaymentClient {
                     .retrieve()
                     .body(TossConfirmApiResponse.class);
         } catch (RestClientResponseException e) {
-            log.warn("토스 결제 승인 API 실패: status={}", e.getStatusCode());
+            log.warn("토스 결제 승인 API 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new TossApiException("토스 결제 승인 API 호출에 실패했습니다.");
         }
     }
@@ -58,7 +58,7 @@ public class TossPaymentClient {
                     .retrieve()
                     .body(TossConfirmApiResponse.class);
         } catch (RestClientResponseException e) {
-            log.warn("토스 결제 조회 API 실패: status={}", e.getStatusCode());
+            log.warn("토스 결제 조회 API 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new TossApiException("토스 결제 조회 API 호출에 실패했습니다.");
         }
     }
@@ -74,7 +74,7 @@ public class TossPaymentClient {
                     .retrieve()
                     .body(TossConfirmApiResponse.class);
         } catch (RestClientResponseException e) {
-            log.warn("토스 결제 취소 API 실패: status={}", e.getStatusCode());
+            log.warn("토스 결제 취소 API 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new TossApiException("토스 결제 취소 API 호출에 실패했습니다.");
         }
     }
