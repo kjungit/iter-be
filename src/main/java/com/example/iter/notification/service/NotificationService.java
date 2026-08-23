@@ -61,7 +61,7 @@ public class NotificationService {
             try {
                 mailService.send(new MailMessage(receiverEmail, notificationProperties.mailFrom(), title, message));
             } catch (Exception e) {
-                log.warn("메일 발송 요청 실패: to={}", receiverEmail, e);
+                log.warn("메일 발송 요청 실패: receiverId={}", receiverId, e);
             }
         }
     }

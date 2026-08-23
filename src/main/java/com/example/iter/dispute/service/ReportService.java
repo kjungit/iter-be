@@ -15,6 +15,7 @@ import com.example.iter.dispute.dto.response.ReportDetailResponse;
 import com.example.iter.dispute.dto.response.ReportSummaryResponse;
 import com.example.iter.dispute.util.ReportMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.EnumSet;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportService {
@@ -62,6 +64,9 @@ public class ReportService {
                 .build();
 
         Report savedReport = reportRepository.save(report);
+        log.info("신고 접수 처리: reportId={}, reporterId={}, targetType={}, targetId={}, status={}",
+                savedReport.getId(), reporterId, savedReport.getTargetType(),
+                savedReport.getTargetId(), savedReport.getStatus());
 
         return reportMapper.toDetail(savedReport, reporter);
     }

@@ -17,6 +17,7 @@ import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -55,7 +57,9 @@ public class PaymentService {
                 .orElseGet(() -> Payment.builder().rentalId(rentalId).amount(amount).build());
         payment.assignOrder(orderId, amount);
 
-        paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        log.info("결제 준비 처리: paymentId={}, rentalId={}, renterId={}, status={}",
+                savedPayment.getId(), rentalId, renterId, savedPayment.getStatus());
         return PaymentReadyResponse.of(rental, orderId, amount, tossProperties.clientKey());
     }
 
@@ -92,6 +96,8 @@ public class PaymentService {
 
         rental.changeStatus(RentalStatus.REQUESTED);
         eventPublisher.publishEvent(new PaymentConfirmedEvent(rental.getId()));
+        log.info("결제 승인 처리: paymentId={}, rentalId={}, renterId={}, paymentStatus={}, rentalStatus={}",
+                payment.getId(), rentalId, renterId, payment.getStatus(), rental.getStatus());
         return PaymentConfirmResponse.of(rental, payment);
     }
 
