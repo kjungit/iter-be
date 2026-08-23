@@ -3,6 +3,7 @@ package com.example.iter.dispute.domain.repository;
 import com.example.iter.dispute.domain.entity.Report;
 import com.example.iter.dispute.domain.entity.ReportStatus;
 import com.example.iter.dispute.domain.entity.ReportTargetType;
+import com.example.iter.dispute.domain.repository.spec.ReportSpecifications;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
@@ -88,10 +89,8 @@ class ReportRepositoryTest {
                 )
         );
 
-        var result = reportRepository.searchMyReports(
-                REPORTER_ID,
-                ReportTargetType.EQUIPMENT,
-                ReportStatus.RECEIVED,
+        var result = reportRepository.findAll(
+                ReportSpecifications.myReports(REPORTER_ID, ReportTargetType.EQUIPMENT, ReportStatus.RECEIVED),
                 pageable
         );
 
@@ -122,10 +121,8 @@ class ReportRepositoryTest {
                 ReportStatus.UNDER_REVIEW
         ));
 
-        var result = reportRepository.searchMyReports(
-                REPORTER_ID,
-                null,
-                null,
+        var result = reportRepository.findAll(
+                ReportSpecifications.myReports(REPORTER_ID, null, null),
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"))
         );
 

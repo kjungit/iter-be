@@ -7,6 +7,7 @@ import com.example.iter.device.domain.entity.ProductConditionType;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
 import com.example.iter.reservation.domain.entity.RentalStatus;
+import com.example.iter.reservation.domain.repository.spec.RentalSpecifications;
 import com.example.iter.reservation.util.RentalOverduePolicy;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,10 +48,8 @@ class RentalHistoryRepositoryTest {
         Rental second = rental(equipment.getId(), RENTER_ID, RentalStatus.RENTING, "둘째 장비", TODAY.plusDays(1));
         rental(equipment.getId(), OTHER_RENTER_ID, RentalStatus.COMPLETED, "다른 회원 장비", TODAY);
 
-        var result = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                null,
-                null,
+        var result = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, null, null),
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
         );
 
@@ -87,16 +86,12 @@ class RentalHistoryRepositoryTest {
                 TODAY
         );
 
-        var result = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                RentalStatus.COMPLETED,
-                "macbook pro",
+        var result = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, RentalStatus.COMPLETED, "macbook pro"),
                 PageRequest.of(0, 20)
         );
-        var currentNameResult = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                null,
-                "현재 변경된 카메라",
+        var currentNameResult = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, null, "현재 변경된 카메라"),
                 PageRequest.of(0, 20)
         );
 
@@ -176,16 +171,12 @@ class RentalHistoryRepositoryTest {
                 TODAY
         );
 
-        var percentResult = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                null,
-                "%",
+        var percentResult = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, null, "%"),
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
         );
-        var underscoreResult = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                null,
-                "_",
+        var underscoreResult = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, null, "_"),
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "id"))
         );
         var lentPercentResult = rentalHistoryRepository.findLentHistory(
@@ -298,10 +289,8 @@ class RentalHistoryRepositoryTest {
         Rental fourth = rental(equipment.getId(), RENTER_ID, RentalStatus.COMPLETED, "장비4", TODAY);
         Rental fifth = rental(equipment.getId(), RENTER_ID, RentalStatus.COMPLETED, "장비5", TODAY);
 
-        var result = rentalHistoryRepository.findBorrowedHistory(
-                RENTER_ID,
-                null,
-                null,
+        var result = rentalHistoryRepository.findAll(
+                RentalSpecifications.borrowedHistory(RENTER_ID, null, null),
                 PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "id"))
         );
 

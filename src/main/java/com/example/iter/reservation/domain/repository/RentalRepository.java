@@ -23,17 +23,22 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
      * 대여자가 아닌 장비 등록자(owner) 기준으로 조회
      * Rental이 Equipment와 FK 연관관계가 없어(equipmentId만 값으로 보관) 서브쿼리로 소유 장비 조회
      */
-    @Query(
-            "SELECT r FROM Rental r " +
-            "WHERE r.equipmentId IN (SELECT e.id FROM Equipment e WHERE e.ownerId = :ownerId) " +
-            "AND (:status IS NULL OR r.status = :status)"
-    )
+    @Query("""
+            select r
+            from Rental r
+            where r.equipmentId in (select e.id from Equipment e where e.ownerId = :ownerId)
+              and (:status is null or r.status = :status)
+            """)
     Page<Rental> findReceivedRentals( @Param("ownerId") Long ownerId, @Param("status") RentalStatus status, Pageable pageable );
 
     // 결제(#3)를 30분 안에 완료하지 않은 PENDING 요청을 자동 취소해서 선점을 풀어준다.
     @Modifying
-    @Query("UPDATE Rental r SET r.status = RentalStatus.CANCELED " +
-            "WHERE r.status = RentalStatus.PENDING AND r.createdAt < :cutoff")
+    @Query("""
+            update Rental r
+            set r.status = RentalStatus.CANCELED
+            where r.status = RentalStatus.PENDING
+              and r.createdAt < :cutoff
+            """)
     int expirePendingRentals(@Param("cutoff") LocalDateTime cutoff);
 
      // 해당 회원이 대여자인 성립된 거래 수를 조회합니다.
@@ -47,9 +52,9 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     // 해당 회원이 소유한 장비에서 발생한 성립된 거래 수를 조회합니다.
     @Query("""
             select count(r.id)
-            from Rental r, Equipment e
-            where r.equipmentId = e.id
-              and e.ownerId = :ownerId
+            from Rental r
+            join Equipment e on e.id = r.equipmentId
+            where e.ownerId = :ownerId
               and r.status in :statuses
             """)
     long countLentByOwnerIdAndStatusIn(
@@ -81,14 +86,14 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Rental> findWithLockById(Long rentalId);
     /** 제외 상태를 제외하고 선택한 기간과 겹치는 예약이 있는지 확인합니다. */
-    @Query(
-            "SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
-            "FROM Rental r " +
-            "WHERE r.equipmentId = :equipmentId " +
-            "AND r.status NOT IN :excludedStatuses " +
-            "AND r.startDate <= :endDate " +
-            "AND r.endDate >= :startDate"
-    )
+    @Query("""
+            select case when count(r) > 0 then true else false end
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and r.startDate <= :endDate
+              and r.endDate >= :startDate
+            """)
     boolean existsConflictingOccupyingRental(
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,
@@ -104,13 +109,14 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
      * (평상시 가용성 조회는 락이 필요 없어 existsConflictingOccupyingRental을 그대로 쓴다).
      */
     @Lock(LockModeType.PESSIMISTIC_READ)
-    @Query(
-            "SELECT r FROM Rental r " +
-            "WHERE r.equipmentId = :equipmentId " +
-            "AND r.status NOT IN :excludedStatuses " +
-            "AND r.startDate <= :endDate " +
-            "AND r.endDate >= :startDate"
-    )
+    @Query("""
+            select r
+            from Rental r
+            where r.equipmentId = :equipmentId
+              and r.status not in :excludedStatuses
+              and r.startDate <= :endDate
+              and r.endDate >= :startDate
+            """)
     List<Rental> findConflictingOccupyingRentalsForUpdate(
             @Param("equipmentId") Long equipmentId,
             @Param("startDate") LocalDate startDate,

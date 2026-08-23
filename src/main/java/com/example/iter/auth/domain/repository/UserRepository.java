@@ -19,8 +19,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    @Query("SELECT new com.example.iter.auth.dto.response.UserSummaryResponse(u.id, u.nickname) " +
-            "FROM User u WHERE u.id = :id")
+    @Query("""
+            select new com.example.iter.auth.dto.response.UserSummaryResponse(u.id, u.nickname)
+            from User u
+            where u.id = :id
+            """)
     Optional<UserSummaryResponse> findSummaryById(@Param("id") Long id);
 
     /**
