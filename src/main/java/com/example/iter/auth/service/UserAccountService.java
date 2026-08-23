@@ -42,7 +42,8 @@ public class UserAccountService {
         user.updateProfile(
                 request.name() == null ? user.getName() : request.name(),
                 request.nickname() == null ? user.getNickname() : request.nickname(),
-                request.phone() == null ? user.getPhone() : request.phone()
+                request.phone() == null ? user.getPhone() : request.phone(),
+                request.preferredLanguage() == null ? user.getPreferredLanguage() : request.preferredLanguage()
         );
         log.info("회원 프로필 변경 처리: userId={}", userId);
         return UserResponse.from(user);

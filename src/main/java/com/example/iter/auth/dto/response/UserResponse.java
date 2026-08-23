@@ -1,5 +1,6 @@
 package com.example.iter.auth.dto.response;
 
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.domain.entity.Role;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
@@ -11,7 +12,8 @@ public record UserResponse(
         String nickname,
         String phone,
         Role role,
-        UserStatus status
+        UserStatus status,
+        PreferredLanguage preferredLanguage
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -21,7 +23,8 @@ public record UserResponse(
                 user.getNickname(),
                 user.getPhone(),
                 user.getRole(),
-                user.getStatus()
+                user.getStatus(),
+                user.getPreferredLanguage()
         );
     }
 }

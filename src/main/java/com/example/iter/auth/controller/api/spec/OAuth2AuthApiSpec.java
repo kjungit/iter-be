@@ -15,6 +15,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 
+import java.util.Locale;
+
 @Tag(name = "OAuth2 Auth", description = "카카오 OAuth2 로그인·회원가입 API")
 public interface OAuth2AuthApiSpec {
 
@@ -52,5 +54,5 @@ public interface OAuth2AuthApiSpec {
             @ApiResponse(responseCode = "409", description = "이메일 또는 카카오 계정이 이미 사용 중",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    ResponseEntity<AccessTokenResponse> signUp(KakaoSignUpRequest request);
+    ResponseEntity<AccessTokenResponse> signUp(KakaoSignUpRequest request, @Parameter(hidden = true) Locale locale);
 }

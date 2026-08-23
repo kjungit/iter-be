@@ -1,5 +1,6 @@
 package com.example.iter.auth.service;
 
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.domain.entity.User;
 import com.example.iter.auth.domain.entity.UserStatus;
 import com.example.iter.auth.domain.repository.UserRepository;
@@ -27,7 +28,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
 
     @Transactional
-    public UserResponse signUp(SignUpRequest request) {
+    public UserResponse signUp(SignUpRequest request, PreferredLanguage preferredLanguage) {
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
@@ -38,6 +39,7 @@ public class AuthService {
                 .name(request.name())
                 .nickname(request.nickname())
                 .phone(request.phone())
+                .preferredLanguage(preferredLanguage)
                 .build();
 
         User savedUser = userRepository.save(user);

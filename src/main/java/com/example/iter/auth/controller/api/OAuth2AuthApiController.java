@@ -1,6 +1,7 @@
 package com.example.iter.auth.controller.api;
 
 import com.example.iter.auth.controller.api.spec.OAuth2AuthApiSpec;
+import com.example.iter.auth.domain.entity.PreferredLanguage;
 import com.example.iter.auth.dto.request.KakaoSignUpRequest;
 import com.example.iter.auth.dto.response.AccessTokenResponse;
 import com.example.iter.auth.service.OAuth2AuthService;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/auth/oauth2/kakao")
@@ -49,9 +52,10 @@ public class OAuth2AuthApiController implements OAuth2AuthApiSpec {
     @Override
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AccessTokenResponse> signUp(
-            @Valid @RequestBody KakaoSignUpRequest request
+            @Valid @RequestBody KakaoSignUpRequest request,
+            Locale locale
     ) {
-        IssuedTokenPair tokenPair = oAuth2AuthService.signUp(request);
+        IssuedTokenPair tokenPair = oAuth2AuthService.signUp(request, PreferredLanguage.fromLocale(locale));
         return tokenResponse(tokenPair, HttpStatus.CREATED);
     }
 

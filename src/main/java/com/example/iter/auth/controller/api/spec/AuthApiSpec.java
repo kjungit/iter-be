@@ -14,13 +14,15 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Locale;
 import org.springframework.security.web.csrf.CsrfToken;
 
 @Tag(name = "Auth", description = "회원가입/로그인 API")
 public interface AuthApiSpec {
 
-    @Operation(summary = "회원가입")
-    ResponseEntity<UserResponse> signUp(SignUpRequest request);
+    @Operation(summary = "회원가입", description = "요청의 Accept-Language를 회원의 이메일 선호 언어(preferredLanguage) 초기값으로 저장합니다.")
+    ResponseEntity<UserResponse> signUp(SignUpRequest request, @Parameter(hidden = true) Locale locale);
 
     @Operation(summary = "로그인", description = "Access Token은 응답 본문으로, Refresh Token은 HttpOnly Cookie로 발급합니다.")
     ResponseEntity<AccessTokenResponse> login(LoginRequest request);
