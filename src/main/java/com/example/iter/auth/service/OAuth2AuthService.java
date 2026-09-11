@@ -41,7 +41,7 @@ public class OAuth2AuthService {
     }
 
     @Transactional
-    public IssuedTokenPair signUp(KakaoSignUpRequest request, PreferredLanguage preferredLanguage) {
+    public OAuthExchangeResult signUp(KakaoSignUpRequest request, PreferredLanguage preferredLanguage) {
         ConsumedOAuthToken pending = pendingTokenService.consumeActionToken(request.oauthToken());
         if (pending.targetUserId() != null) {
             throw new CustomException(ErrorCode.OAUTH_TOKEN_INVALID);
@@ -51,10 +51,18 @@ public class OAuth2AuthService {
             throw new CustomException(ErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED);
         }
         String signupEmail = resolveSignupEmail(pending.email(), request.email());
-        if (userRepository.existsByEmail(signupEmail)) {
-            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
 
+        return userRepository.findByEmail(signupEmail)
+                .<OAuthExchangeResult>map(existingUser -> issueLinkRequired(pending, signupEmail, existingUser))
+                .orElseGet(() -> completeSignUp(request, preferredLanguage, pending, signupEmail));
+    }
+
+    private OAuthExchangeResult completeSignUp(
+            KakaoSignUpRequest request,
+            PreferredLanguage preferredLanguage,
+            ConsumedOAuthToken pending,
+            String signupEmail
+    ) {
         User user;
         try {
             user = userRepository.saveAndFlush(User.builder()
@@ -73,7 +81,7 @@ public class OAuth2AuthService {
 
         log.info("OAuth 회원가입 처리: userId={}, provider={}", user.getId(), pending.provider());
 
-        return authService.issueTokens(user);
+        return new OAuthExchangeResult.Authenticated(authService.issueTokens(user));
     }
 
     private String resolveSignupEmail(String kakaoEmail, String requestedEmail) {
@@ -114,16 +122,33 @@ public class OAuth2AuthService {
         User existingUser = pending.email() == null
                 ? null
                 : userRepository.findByEmail(pending.email()).orElse(null);
-        Long targetUserId = existingUser == null ? null : existingUser.getId();
-        OAuthAction action = existingUser == null
-                ? OAuthAction.SIGNUP_REQUIRED
-                : OAuthAction.LINK_REQUIRED;
+        if (existingUser != null) {
+            return issueLinkRequired(pending, pending.email(), existingUser);
+        }
 
-        IssuedOAuthPendingToken actionToken = pendingTokenService.issueActionToken(pending, targetUserId);
+        IssuedOAuthPendingToken actionToken = pendingTokenService.issueActionToken(pending, null);
         OAuthActionRequiredResponse response = new OAuthActionRequiredResponse(
-                action,
+                OAuthAction.SIGNUP_REQUIRED,
                 actionToken.rawToken(),
                 pending.email(),
+                pending.nickname(),
+                actionToken.expiresIn()
+        );
+        return new OAuthExchangeResult.ActionRequired(response);
+    }
+
+    // 카카오가 이메일 동의를 안 준 경우 pending.email()이 null이라 requireSignupOrLink에서는
+    // 신규/기존을 판단할 수 없다. signUp() 단계에서 사용자가 입력한 이메일로 뒤늦게 충돌이
+    // 발견되면 이 메서드로 동일하게 LINK_REQUIRED 토큰을 재발급한다.
+    private OAuthExchangeResult issueLinkRequired(ConsumedOAuthToken pending, String email, User existingUser) {
+        ConsumedOAuthToken reissueSource = new ConsumedOAuthToken(
+                pending.provider(), pending.providerUserId(), email, pending.nickname(), null);
+        IssuedOAuthPendingToken actionToken =
+                pendingTokenService.issueActionToken(reissueSource, existingUser.getId());
+        OAuthActionRequiredResponse response = new OAuthActionRequiredResponse(
+                OAuthAction.LINK_REQUIRED,
+                actionToken.rawToken(),
+                email,
                 pending.nickname(),
                 actionToken.expiresIn()
         );

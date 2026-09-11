@@ -51,12 +51,17 @@ public class OAuth2AuthApiController implements OAuth2AuthApiSpec {
 
     @Override
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AccessTokenResponse> signUp(
+    public ResponseEntity<?> signUp(
             @Valid @RequestBody KakaoSignUpRequest request,
             Locale locale
     ) {
-        IssuedTokenPair tokenPair = oAuth2AuthService.signUp(request, PreferredLanguage.fromLocale(locale));
-        return tokenResponse(tokenPair, HttpStatus.CREATED);
+        OAuthExchangeResult result = oAuth2AuthService.signUp(request, PreferredLanguage.fromLocale(locale));
+        if (result instanceof OAuthExchangeResult.Authenticated authenticated) {
+            return tokenResponse(authenticated.tokenPair(), HttpStatus.CREATED);
+        }
+
+        OAuthExchangeResult.ActionRequired actionRequired = (OAuthExchangeResult.ActionRequired) result;
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(actionRequired.response());
     }
 
     private ResponseEntity<AccessTokenResponse> tokenResponse(
