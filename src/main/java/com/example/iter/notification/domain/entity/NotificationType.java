@@ -11,7 +11,8 @@ public enum NotificationType {
     RENTAL_APPROVED(true),           // 대여 승인 - 대여자에게
     RENTAL_REJECTED(true),           // 대여 거절 - 대여자에게
     RENTAL_CANCELED(true),           // 승인 전 예약 취소 - 장비 등록자에게
-    RENTAL_RECEIVED(true);           // 수령확인 완료(대여 시작) - 장비 등록자에게
+    RENTAL_RECEIVED(true),           // 수령확인 완료(대여 시작) - 장비 등록자에게
+    REVIEW_RECEIVED(false);          // 상대방이 리뷰를 남김 - 리뷰 대상자에게 (메일 없이 앱 알림만)
 
     private final boolean requiresEmail;
 

@@ -59,6 +59,13 @@ final class NotificationMessages {
     private static final String RENTAL_RECEIVED_TEMPLATE_EN =
             "%s confirmed receipt of [%s]. The rental period has started.";
 
+    // 인자 순서(reviewerName, productName, rating)는 KO/EN 공통이지만 문장 내 등장 순서가 달라
+    // 위치 지정자(%1$s 등)로 순서를 맞춘다.
+    private static final String REVIEW_RECEIVED_TITLE_KO = "새 리뷰가 도착했습니다";
+    private static final String REVIEW_RECEIVED_TEMPLATE_KO = "%1$s님이 [%2$s] 거래에 별점 %3$d점 리뷰를 남겼습니다.";
+    private static final String REVIEW_RECEIVED_TITLE_EN = "You received a new review";
+    private static final String REVIEW_RECEIVED_TEMPLATE_EN = "%1$s left a %3$d-star review for your [%2$s] rental.";
+
     private NotificationMessages() {
     }
 
@@ -134,6 +141,16 @@ final class NotificationMessages {
                 en ? RENTAL_RECEIVED_TITLE_EN : RENTAL_RECEIVED_TITLE_KO,
                 (en ? RENTAL_RECEIVED_TEMPLATE_EN : RENTAL_RECEIVED_TEMPLATE_KO).formatted(renterName, productName),
                 Map.of("renterName", renterName, "productName", productName)
+        );
+    }
+
+    static Content reviewReceived(String reviewerName, String productName, int rating, PreferredLanguage language) {
+        boolean en = isEnglish(language);
+        return new Content(
+                en ? REVIEW_RECEIVED_TITLE_EN : REVIEW_RECEIVED_TITLE_KO,
+                (en ? REVIEW_RECEIVED_TEMPLATE_EN : REVIEW_RECEIVED_TEMPLATE_KO)
+                        .formatted(reviewerName, productName, rating),
+                Map.of("reviewerName", reviewerName, "productName", productName, "rating", rating)
         );
     }
 }

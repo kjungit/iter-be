@@ -93,7 +93,11 @@ public enum ErrorCode {
     TOSS_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "주문 정보가 일치하지 않습니다."),
 
     // Notification
-    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다.");
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
+
+    // Reservation - Review
+    REVIEW_NOT_ALLOWED_STATUS(HttpStatus.CONFLICT, "반납이 완료된 거래만 리뷰를 작성할 수 있습니다."),
+    REVIEW_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 이 거래에 대한 리뷰를 작성했습니다.");
 
     // TODO: delivery / dispute 담당자가 각자 도메인 에러코드를 이어서 추가
 

@@ -10,11 +10,14 @@ import com.example.iter.payment.domain.entity.PaymentStatus;
 import com.example.iter.payment.domain.repository.PaymentRepository;
 import com.example.iter.payment.event.PaymentConfirmedEvent;
 import com.example.iter.reservation.domain.entity.Rental;
+import com.example.iter.reservation.domain.entity.RentalReview;
 import com.example.iter.reservation.domain.repository.RentalRepository;
+import com.example.iter.reservation.domain.repository.RentalReviewRepository;
 import com.example.iter.reservation.event.RentalApprovedEvent;
 import com.example.iter.reservation.event.RentalCanceledEvent;
 import com.example.iter.reservation.event.RentalReceivedEvent;
 import com.example.iter.reservation.event.RentalRejectedEvent;
+import com.example.iter.reservation.event.RentalReviewCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -35,6 +38,7 @@ public class NotificationEventListener {
     private final EquipmentRepository equipmentRepository;
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
+    private final RentalReviewRepository rentalReviewRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPaymentConfirmed(PaymentConfirmedEvent event) {
@@ -169,6 +173,34 @@ public class NotificationEventListener {
                 owner.getPreferredLanguage());
         notify(() -> notificationService.create(
                 owner.getId(), owner.getEmail(), NotificationType.RENTAL_RECEIVED,
+                content.title(), content.message(), content.params(),
+                rental.getId()
+        ));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onRentalReviewCreated(RentalReviewCreatedEvent event) {
+        RentalReview review = rentalReviewRepository.findById(event.reviewId()).orElse(null);
+        if (review == null) {
+            return;
+        }
+        Rental rental = rentalRepository.findById(review.getRentalId()).orElse(null);
+        if (rental == null) {
+            return;
+        }
+        User reviewer = userRepository.findById(review.getReviewerId()).orElse(null);
+        User reviewee = userRepository.findById(review.getRevieweeId()).orElse(null);
+        if (reviewee == null) {
+            return;
+        }
+
+        NotificationMessages.Content content = NotificationMessages.reviewReceived(
+                reviewer != null ? reviewer.getName() : "상대방",
+                rental.getProductNameSnapshot(),
+                review.getRating(),
+                reviewee.getPreferredLanguage());
+        notify(() -> notificationService.create(
+                reviewee.getId(), reviewee.getEmail(), NotificationType.REVIEW_RECEIVED,
                 content.title(), content.message(), content.params(),
                 rental.getId()
         ));
