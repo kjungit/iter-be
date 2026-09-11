@@ -14,10 +14,16 @@ import lombok.*;
                 name = "uk_rental_review_rental_reviewer",
                 columnNames = {"rental_id", "reviewer_id"}
         ),
-        indexes = @Index(
-                name = "idx_rental_review_reviewee_created_id",
-                columnList = "reviewee_id, created_at DESC, id DESC"
-        )
+        indexes = {
+                @Index(
+                        name = "idx_rental_review_reviewee_created_id",
+                        columnList = "reviewee_id, created_at DESC, id DESC"
+                ),
+                @Index(
+                        name = "idx_rental_review_reviewer_created_id",
+                        columnList = "reviewer_id, created_at DESC, id DESC"
+                )
+        }
 )
 @Getter
 @Builder

@@ -64,4 +64,15 @@ public class RentalReviewApiController implements RentalReviewApiSpec {
     ) {
         return ResponseEntity.ok(rentalReviewService.getReviewStats(userId));
     }
+
+    @Override
+    @GetMapping("/users/{userId}/reviews/written")
+    public ResponseEntity<CursorPageResponse<RentalReviewResponse>> getReviewsWrittenByUser(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long userId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(rentalReviewService.getReviewsWrittenByUser(userId, cursor, size));
+    }
 }

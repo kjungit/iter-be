@@ -6,6 +6,7 @@ import com.example.iter.device.domain.entity.Equipment;
 import com.example.iter.device.domain.entity.EquipmentCategory;
 import com.example.iter.device.domain.repository.EquipmentRepository;
 import com.example.iter.reservation.domain.entity.Rental;
+import com.example.iter.reservation.domain.entity.RentalReview;
 import com.example.iter.reservation.domain.entity.RentalStatus;
 import com.example.iter.reservation.domain.repository.RentalRepository;
 import com.example.iter.reservation.domain.repository.RentalReviewRepository;
@@ -22,11 +23,14 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -148,6 +152,27 @@ class RentalReviewServiceTest {
 
         assertThat(response.reviewerId()).isEqualTo(OWNER_ID);
         assertThat(response.revieweeId()).isEqualTo(RENTER_ID);
+    }
+
+    @Test
+    void 사용자가_작성한_리뷰_목록은_reviewerId_기준으로_조회한다() {
+        RentalReview written = RentalReview.builder()
+                .id(200L)
+                .rentalId(RENTAL_ID)
+                .reviewerId(RENTER_ID)
+                .revieweeId(OWNER_ID)
+                .rating(5)
+                .content("잘 썼습니다.")
+                .build();
+        when(rentalReviewRepository.findNextByReviewerId(
+                eq(RENTER_ID), isNull(), isNull(), any()))
+                .thenReturn(List.of(written));
+
+        var response = rentalReviewService.getReviewsWrittenByUser(RENTER_ID, null, 20);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).reviewerId()).isEqualTo(RENTER_ID);
+        assertThat(response.hasNext()).isFalse();
     }
 
     private RentalReviewCreateRequest request() {

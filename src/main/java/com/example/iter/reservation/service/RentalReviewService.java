@@ -95,6 +95,25 @@ public class RentalReviewService {
         return UserReviewStatsResponse.from(rentalReviewRepository.findRatingStatsByRevieweeId(userId));
     }
 
+    // 특정 사용자가 작성한 리뷰 목록을 커서(keyset) 방식으로 조회합니다.
+    @Transactional(readOnly = true)
+    public CursorPageResponse<RentalReviewResponse> getReviewsWrittenByUser(Long userId, String cursor, int size) {
+        CursorKey cursorKey = CursorCodec.decode(cursor);
+        LocalDateTime cursorCreatedAt = cursorKey == null ? null : cursorKey.createdAt();
+        Long cursorId = cursorKey == null ? null : cursorKey.id();
+
+        Pageable limit = PageRequest.of(0, size + 1);
+        List<RentalReview> reviews = rentalReviewRepository.findNextByReviewerId(
+                userId, cursorCreatedAt, cursorId, limit);
+
+        return CursorPageResponse.from(
+                reviews,
+                size,
+                RentalReviewResponse::from,
+                review -> new CursorKey(review.getCreatedAt(), review.getId())
+        );
+    }
+
     // ===================================================
 
     private Rental findRental(Long rentalId) {

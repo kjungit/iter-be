@@ -41,6 +41,25 @@ public interface RentalReviewRepository extends JpaRepository<RentalReview, Long
             """)
     RatingStats findRatingStatsByRevieweeId(@Param("revieweeId") Long revieweeId);
 
+    // findNextByRevieweeId와 동일한 keyset(cursor) 패턴, 대상만 reviewerId로 바꾼 것.
+    @Query("""
+            select r
+            from RentalReview r
+            where r.reviewerId = :reviewerId
+              and (
+                    :cursorCreatedAt is null
+                    or r.createdAt < :cursorCreatedAt
+                    or (r.createdAt = :cursorCreatedAt and r.id < :cursorId)
+                  )
+            order by r.createdAt desc, r.id desc
+            """)
+    List<RentalReview> findNextByReviewerId(
+            @Param("reviewerId") Long reviewerId,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
     interface RatingStats {
         Double getAverageRating();
 
