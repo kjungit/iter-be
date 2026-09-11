@@ -164,6 +164,39 @@ class OAuth2FlowApiTest {
     }
 
     @Test
+    void signupWithExistingEmailReturnsLinkRequiredInsteadOfConflict() throws Exception {
+        User existingUser = saveUser("oauth-api-collide@example.com");
+        // 카카오 계정이 이메일 제공에 동의하지 않은 상황 재현
+        String oauthToken = issueSignupActionToken("kakao-api-900", null);
+
+        MvcResult signupResult = mockMvc.perform(withCsrf(
+                        signupRequest(oauthToken, existingUser.getEmail())))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.action").value("LINK_REQUIRED"))
+                .andExpect(jsonPath("$.oauthToken").isNotEmpty())
+                .andExpect(jsonPath("$.email").value(existingUser.getEmail()))
+                .andReturn();
+
+        assertThat(userRepository.count()).isOne();
+        assertThat(oAuthAccountRepository.count()).isZero();
+
+        String linkToken = com.jayway.jsonpath.JsonPath.read(
+                signupResult.getResponse().getContentAsString(),
+                "$.oauthToken"
+        );
+        String accessToken = jwtTokenProvider.generateAccessToken(existingUser);
+
+        mockMvc.perform(linkRequest(accessToken, linkToken))
+                .andExpect(status().isNoContent());
+
+        OAuthAccount linkedAccount = oAuthAccountRepository.findByProviderAndProviderUserId(
+                OAuthProvider.KAKAO,
+                "kakao-api-900"
+        ).orElseThrow();
+        assertThat(linkedAccount.getUserId()).isEqualTo(existingUser.getId());
+    }
+
+    @Test
     void exchangeWithoutCsrfTokenIsForbidden() throws Exception {
         String code = issueExchange("kakao-api-400", null);
         MockHttpSession session = sessionWithExchangeCode(code);
