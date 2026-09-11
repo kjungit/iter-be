@@ -39,20 +39,23 @@ public interface OAuth2AuthApiSpec {
     ResponseEntity<?> exchange(@Parameter(hidden = true) HttpServletRequest request);
 
     @Operation(summary = "카카오 신규 회원가입",
-            description = "카카오 신규 회원의 추가 정보를 저장하고 즉시 로그인 처리합니다.")
+            description = "카카오 신규 회원의 추가 정보를 저장하고 즉시 로그인 처리합니다. "
+                    + "입력한 이메일로 이미 가입된 계정이 있으면 가입 대신 계정 연결 절차(LINK_REQUIRED)로 전환됩니다.")
     @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
             description = "XSRF-TOKEN Cookie와 동일한 CSRF Token")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "카카오 신규 회원가입 및 로그인 성공",
                     content = @Content(schema = @Schema(implementation = AccessTokenResponse.class))),
+            @ApiResponse(responseCode = "202", description = "입력한 이메일로 이미 가입된 계정이 있어 계정 연결 절차 필요",
+                    content = @Content(schema = @Schema(implementation = OAuthActionRequiredResponse.class))),
             @ApiResponse(responseCode = "400", description = "요청 값 또는 카카오 이메일 불일치",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "OAuth 일회용 토큰이 유효하지 않거나 만료됨",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "CSRF Token이 유효하지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "이메일 또는 카카오 계정이 이미 사용 중",
+            @ApiResponse(responseCode = "409", description = "이미 연결된 카카오 계정",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    ResponseEntity<AccessTokenResponse> signUp(KakaoSignUpRequest request, @Parameter(hidden = true) Locale locale);
+    ResponseEntity<?> signUp(KakaoSignUpRequest request, @Parameter(hidden = true) Locale locale);
 }

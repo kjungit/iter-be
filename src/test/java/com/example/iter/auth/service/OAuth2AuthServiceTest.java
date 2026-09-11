@@ -117,13 +117,15 @@ class OAuth2AuthServiceTest {
         assertThat(actionRequired.response().action()).isEqualTo(OAuthAction.SIGNUP_REQUIRED);
         assertThat(actionRequired.response().expiresIn()).isEqualTo(300);
 
-        IssuedTokenPair tokenPair = oAuth2AuthService.signUp(new KakaoSignUpRequest(
-                actionRequired.response().oauthToken(),
-                "new@example.com",
-                "홍길동",
-                "길동",
-                "010-1234-5678"
-        ), PreferredLanguage.KO);
+        OAuthExchangeResult.Authenticated authenticated = (OAuthExchangeResult.Authenticated) oAuth2AuthService.signUp(
+                new KakaoSignUpRequest(
+                        actionRequired.response().oauthToken(),
+                        "new@example.com",
+                        "홍길동",
+                        "길동",
+                        "010-1234-5678"
+                ), PreferredLanguage.KO);
+        IssuedTokenPair tokenPair = authenticated.tokenPair();
 
         User savedUser = userRepository.findByEmail("new@example.com").orElseThrow();
         assertThat(savedUser.getPassword()).isNull();
@@ -181,6 +183,43 @@ class OAuth2AuthServiceTest {
         OAuthAccount linked = oAuthAccountRepository.findByProviderAndProviderUserId(
                 OAuthProvider.KAKAO, "kakao-300").orElseThrow();
         assertThat(linked.getUserId()).isEqualTo(targetUser.getId());
+    }
+
+    @Test
+    void signUpWithAlreadyRegisteredEmailReturnsLinkRequiredInsteadOfError() {
+        User existingUser = savePasswordUser("existing-signup@example.com");
+        // 카카오 계정이 이메일 제공에 동의하지 않은 상황 재현 (pending.email() == null)
+        String exchangeCode = issueExchange("kakao-700", null, "이메일미동의");
+        OAuthExchangeResult.ActionRequired signupAction =
+                (OAuthExchangeResult.ActionRequired) oAuth2AuthService.exchange(exchangeCode);
+        assertThat(signupAction.response().action()).isEqualTo(OAuthAction.SIGNUP_REQUIRED);
+
+        KakaoSignUpRequest request = new KakaoSignUpRequest(
+                signupAction.response().oauthToken(),
+                existingUser.getEmail(),
+                "홍길동",
+                "길동",
+                "010-1234-5678"
+        );
+
+        OAuthExchangeResult.ActionRequired linkAction =
+                (OAuthExchangeResult.ActionRequired) oAuth2AuthService.signUp(request, PreferredLanguage.KO);
+
+        assertThat(linkAction.response().action()).isEqualTo(OAuthAction.LINK_REQUIRED);
+        assertThat(linkAction.response().email()).isEqualTo(existingUser.getEmail());
+        assertThat(userRepository.count()).isOne();
+        assertThat(oAuthAccountRepository.count()).isZero();
+
+        User anotherUser = savePasswordUser("another-signup@example.com");
+        assertCustomError(
+                () -> oAuth2AuthService.link(anotherUser.getId(), linkAction.response().oauthToken()),
+                ErrorCode.OAUTH_LINK_TARGET_MISMATCH
+        );
+
+        oAuth2AuthService.link(existingUser.getId(), linkAction.response().oauthToken());
+        OAuthAccount linked = oAuthAccountRepository.findByProviderAndProviderUserId(
+                OAuthProvider.KAKAO, "kakao-700").orElseThrow();
+        assertThat(linked.getUserId()).isEqualTo(existingUser.getId());
     }
 
     @Test
